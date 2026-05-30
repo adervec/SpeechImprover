@@ -1,0 +1,18 @@
+-design.md should be kept up to date as code is generated
+
+-project should be in react
+-goal is a speech improver app to assess speech and provide exercises for improving it. ENGLISH ONLY for now.
+-should be able to generate structured exercises to push improvement in trouble areas and also allow reading of provided text or free speaking (ie. from improv or some unseen paper)
+-should be able to load historical examples of speaking patterns from old dates 
+-should be able to provide examples of target desirable and undesirable speaking patterns and analyze the 'distance' between these and current speaking patterns.
+-should be able to analyze speech on all relevant attributes such as deepness, richness, non-repetition, lack of nasal tone, lack of mumbling, lack of uptalk, and so forth.
+-should be able to trend progress overall or for coherent subsets
+-should historize everything by default but allow purging (including purging just bulky audio files for space management)
+-should support data import/export
+-should have user profile features with age, gender, native language, country of birth etc. for reference.
+-should have multiple stylish themes and look modern.
+-should have ability to view session debrief on exit
+-Baseline Ref contains claude-generated principles of speech improvement
+-always clearly show input and output devices and microphone input received indicator.
+-always need to be very clear if recording.
+-allow repeat and comparison of previously completed exercises

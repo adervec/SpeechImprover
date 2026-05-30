@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Continuous Speech Improvement Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,900&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1a2433;
+    --navy:#1f3a5f;
+    --blue:#2e6db4;
+    --blue-soft:#eaf1f8;
+    --paper:#f7f4ee;
+    --card:#fffdf9;
+    --line:#d8d2c6;
+    --grey:#5b6573;
+    --accent:#c0612f;
+    --shadow:0 1px 2px rgba(31,58,95,.06),0 8px 28px rgba(31,58,95,.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:'Newsreader',Georgia,serif;
+    color:var(--ink);
+    background:var(--paper);
+    line-height:1.65;
+    font-size:18px;
+    -webkit-font-smoothing:antialiased;
+  }
+  /* paper grain */
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.5;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.035'/%3E%3C/svg%3E");
+  }
+
+  .layout{display:grid;grid-template-columns:280px 1fr;max-width:1240px;margin:0 auto;position:relative;z-index:1}
+
+  /* ---- sidebar nav ---- */
+  nav{
+    position:sticky;top:0;align-self:start;height:100vh;
+    padding:48px 28px 48px 36px;border-right:1px solid var(--line);
+    overflow-y:auto;
+  }
+  .brand{font-family:'Fraunces',serif;font-weight:900;font-size:1.35rem;line-height:1.15;color:var(--navy);letter-spacing:-.01em}
+  .brand span{color:var(--accent)}
+  .brand-sub{font-family:'IBM Plex Mono',monospace;font-size:.62rem;letter-spacing:.22em;text-transform:uppercase;color:var(--grey);margin-top:12px}
+  .toc{margin-top:38px;list-style:none;counter-reset:t}
+  .toc li{counter-increment:t;margin:2px 0}
+  .toc a{
+    display:flex;gap:12px;align-items:baseline;text-decoration:none;color:var(--grey);
+    font-size:.95rem;padding:8px 12px;border-radius:7px;transition:all .18s ease;
+  }
+  .toc a::before{content:counter(t,decimal-leading-zero);font-family:'IBM Plex Mono',monospace;font-size:.7rem;color:var(--blue);font-weight:500}
+  .toc a:hover{background:var(--blue-soft);color:var(--navy)}
+  .toc a.active{background:var(--navy);color:#fff}
+  .toc a.active::before{color:#9ec3ee}
+
+  /* ---- content ---- */
+  main{padding:0 0 120px}
+  .hero{
+    padding:88px 64px 64px;border-bottom:1px solid var(--line);
+    background:
+      radial-gradient(1100px 320px at 78% -10%,rgba(46,109,180,.10),transparent 60%),
+      radial-gradient(700px 260px at 5% 8%,rgba(192,97,47,.07),transparent 60%);
+  }
+  .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:.7rem;letter-spacing:.28em;text-transform:uppercase;color:var(--accent);margin-bottom:22px}
+  h1.title{font-family:'Fraunces',serif;font-weight:900;font-size:clamp(2.6rem,5.2vw,4.3rem);line-height:.98;letter-spacing:-.025em;color:var(--navy)}
+  h1.title em{font-style:italic;color:var(--accent);font-weight:500}
+  .lede{font-size:1.22rem;color:var(--grey);max-width:46ch;margin-top:26px;font-style:italic}
+  .hero-tags{display:flex;flex-wrap:wrap;gap:10px;margin-top:34px}
+  .hero-tags span{font-family:'IBM Plex Mono',monospace;font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:var(--navy);border:1px solid var(--line);background:var(--card);padding:7px 13px;border-radius:30px}
+
+  section{padding:60px 64px 12px;scroll-margin-top:20px}
+  .sec-head{display:flex;align-items:baseline;gap:18px;margin-bottom:28px;border-bottom:2px solid var(--navy);padding-bottom:16px}
+  .sec-num{font-family:'IBM Plex Mono',monospace;font-size:.8rem;color:var(--blue);font-weight:500;letter-spacing:.1em}
+  h2{font-family:'Fraunces',serif;font-weight:700;font-size:2rem;line-height:1.05;letter-spacing:-.02em;color:var(--navy)}
+  h3{font-family:'Fraunces',serif;font-weight:600;font-size:1.28rem;color:var(--navy);margin:34px 0 12px}
+  h4{font-family:'IBM Plex Mono',monospace;font-size:.78rem;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin:24px 0 10px}
+  p{margin:0 0 16px;max-width:64ch}
+
+  ul.clean,ol.clean{margin:6px 0 20px;padding-left:0;list-style:none;max-width:64ch}
+  ul.clean li,ol.clean li{position:relative;padding-left:30px;margin:9px 0}
+  ul.clean li::before{content:"";position:absolute;left:6px;top:.62em;width:7px;height:7px;background:var(--blue);border-radius:2px;transform:rotate(45deg)}
+  ol.clean{counter-reset:c}
+  ol.clean li{counter-increment:c}
+  ol.clean li::before{content:counter(c);position:absolute;left:0;top:.05em;font-family:'IBM Plex Mono',monospace;font-size:.78rem;font-weight:500;color:#fff;background:var(--navy);width:21px;height:21px;border-radius:50%;display:grid;place-items:center}
+  li b{color:var(--navy)}
+
+  /* callout */
+  .callout{
+    background:var(--blue-soft);border-left:5px solid var(--blue);
+    border-radius:0 12px 12px 0;padding:22px 26px;margin:26px 0;box-shadow:var(--shadow);
+    max-width:64ch;
+  }
+  .callout .ct{font-family:'Fraunces',serif;font-weight:600;color:var(--navy);font-size:1.08rem;margin-bottom:6px;display:block}
+  .callout p{margin:0;color:#2b3a4d}
+
+  /* tables */
+  .tbl-wrap{margin:24px 0;overflow-x:auto;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
+  table{border-collapse:collapse;width:100%;background:var(--card);font-size:.95rem}
+  thead th{background:var(--navy);color:#fff;font-family:'IBM Plex Mono',monospace;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;font-weight:500;text-align:left;padding:13px 16px}
+  tbody td{padding:12px 16px;border-top:1px solid var(--line);vertical-align:top}
+  tbody tr:nth-child(even){background:rgba(234,241,248,.5)}
+  tbody td:first-child{font-weight:500;color:var(--navy)}
+
+  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:30px}
+  @media(max-width:1080px){
+    .layout{grid-template-columns:1fr}
+    nav{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line)}
+    .toc{display:grid;grid-template-columns:repeat(2,1fr);gap:2px}
+    .hero,section{padding-left:32px;padding-right:32px}
+    .twocol{grid-template-columns:1fr}
+  }
+  @media(max-width:560px){.toc{grid-template-columns:1fr}.hero{padding:56px 22px 40px}section{padding:44px 22px 8px}}
+
+  footer{padding:40px 64px;border-top:1px solid var(--line);color:var(--grey);font-size:.85rem;font-style:italic;text-align:center}
+  @media print{nav{display:none}.layout{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <nav>
+    <div class="brand">The Continuous<br>Speech <span>Improvement</span><br>Guide</div>
+    <div class="brand-sub">Practice · Therapy · Tracking</div>
+    <ol class="toc" id="toc">
+      <li><a href="#s1">Setting Expectations</a></li>
+      <li><a href="#s2">Baseline Assessment</a></li>
+      <li><a href="#s3">The Daily Practice System</a></li>
+      <li><a href="#s4">Targeted Techniques</a></li>
+      <li><a href="#s5">Tracking Progress</a></li>
+      <li><a href="#s6">Professional Help</a></li>
+      <li><a href="#s7">Staying Consistent</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <header class="hero">
+      <div class="eyebrow">A Realistic Framework</div>
+      <h1 class="title">Sound clearer.<br>Sound <em>like yourself.</em></h1>
+      <p class="lede">A sustainable approach to sounding clearer, steadier, and more confident — by amplifying your real voice, not performing a new one.</p>
+      <div class="hero-tags">
+        <span>Practice</span><span>Therapy</span><span>Progress Tracking</span><span>Habit Design</span>
+      </div>
+    </header>
+
+    <!-- 1 -->
+    <section id="s1">
+      <div class="sec-head"><span class="sec-num">01</span><h2>Setting the Right Expectations</h2></div>
+      <p>Speech is a motor skill layered on top of habit, breath, and self-perception. That means it improves the way any physical skill does: slowly, unevenly, and through repetition rather than insight. You won't wake up one morning sounding like a different person — and you shouldn't want to. The goal here isn't to give you a new voice but to help your real voice come through more clearly and consistently.</p>
+      <div class="callout">
+        <span class="ct">The core principle</span>
+        <p>Aim for your best natural voice, not someone else's. Sustainable improvement amplifies clarity, pacing, and confidence you already have access to — not an imitation you have to maintain.</p>
+      </div>
+      <h3>What "realistic" actually looks like</h3>
+      <ul class="clean">
+        <li>Noticeable change in clarity and pacing usually takes <b>6–12 weeks</b> of consistent short practice.</li>
+        <li>Habits that survive stress — interviews, conflict, fatigue — take several months to set in.</li>
+        <li>Progress is non-linear. Plateaus and bad days are part of the process, not signs of failure.</li>
+        <li>Ten focused minutes daily beats two hours once a week. Frequency builds motor memory; marathons don't.</li>
+      </ul>
+      <h3>Common traps to avoid</h3>
+      <ul class="clean">
+        <li><b>Overcorrecting</b> — speaking so slowly or deliberately that you sound unnatural. Subtlety is the target.</li>
+        <li><b>Voice-pushing</b> — forcing a deeper or louder voice strains the vocal folds and isn't sustainable.</li>
+        <li><b>All-or-nothing</b> — skipping a day and abandoning the whole effort. Consistency tolerates gaps.</li>
+        <li><b>Comparison</b> — measuring yourself against polished speakers instead of your own past recordings.</li>
+      </ul>
+    </section>
+
+    <!-- 2 -->
+    <section id="s2">
+      <div class="sec-head"><span class="sec-num">02</span><h2>Baseline Assessment</h2></div>
+      <p>You can't improve what you haven't measured. Before changing anything, spend one session capturing where you are now. This recording is the single most valuable thing you'll make — it's what every later recording gets compared against.</p>
+      <h3>Record three samples</h3>
+      <ol class="clean">
+        <li><b>Reading aloud</b> — a paragraph of unfamiliar text (a news article works well).</li>
+        <li><b>Free speech</b> — talk for two minutes about your day or a topic you like, unscripted.</li>
+        <li><b>High-pressure simulation</b> — answer a mock interview question or explain something complex.</li>
+      </ol>
+      <h3>What to listen for</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Dimension</th><th>Listen for</th><th>Common issue</th></tr></thead>
+          <tbody>
+            <tr><td>Pace</td><td>Words per minute; rushing on key points</td><td>Speaking too fast under nerves</td></tr>
+            <tr><td>Clarity</td><td>Mumbled or clipped word endings</td><td>Dropping consonants (“-ing”, “-t”)</td></tr>
+            <tr><td>Filler</td><td>“um”, “like”, “you know”, “so”</td><td>Filling every pause</td></tr>
+            <tr><td>Pitch &amp; tone</td><td>Monotone vs. expressive range</td><td>Flat delivery; upspeak on statements</td></tr>
+            <tr><td>Volume</td><td>Trailing off at sentence ends</td><td>Fading energy mid-sentence</td></tr>
+            <tr><td>Breath</td><td>Gasping; run-on sentences</td><td>Speaking past your air supply</td></tr>
+            <tr><td>Articulation</td><td>Specific sounds (s, r, th, l)</td><td>Lisps or substitutions</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout">
+        <span class="ct">Pick two, not seven</span>
+        <p>Listening back, you'll notice many things. Resist fixing all of them. Choose the two that most affect how you come across, and ignore the rest until those improve. Splitting attention across many targets is the most common reason practice stalls.</p>
+      </div>
+    </section>
+
+    <!-- 3 -->
+    <section id="s3">
+      <div class="sec-head"><span class="sec-num">03</span><h2>The Daily Practice System</h2></div>
+      <p>This is the engine of the whole guide. A short, structured routine done most days will outperform any amount of theory. The full routine below takes about 12 minutes; on busy days, do the 4-minute core.</p>
+      <h3>The 12-minute routine</h3>
+      <h4>Warm-up · 3 min</h4>
+      <ul class="clean">
+        <li><b>Breathing</b> — 5 slow breaths into your belly, exhaling on a steady “sss” as long as comfortable. Builds breath support.</li>
+        <li><b>Humming</b> — hum gently up and down your comfortable range to wake up resonance.</li>
+        <li><b>Lip trills</b> — release tension and connect breath to voice.</li>
+      </ul>
+      <h4>Articulation · 3 min</h4>
+      <ul class="clean">
+        <li>Tongue twisters, slowly then faster, prioritizing precision over speed.</li>
+        <li>Over-articulate a sentence, exaggerating every consonant, then say it normally.</li>
+      </ul>
+      <h4>Core skill drill · 4 min</h4>
+      <ul class="clean">
+        <li>Work only on your two chosen targets (e.g., pacing + filler reduction).</li>
+        <li>Read a passage applying the technique deliberately, then repeat it unscripted.</li>
+      </ul>
+      <h4>Cool-down &amp; capture · 2 min</h4>
+      <ul class="clean">
+        <li>Record 30–60 seconds of free speech and save it with the date.</li>
+        <li>Note one thing that went well and one to revisit tomorrow.</li>
+      </ul>
+      <div class="callout">
+        <span class="ct">The 4-minute core (busy days)</span>
+        <p>30s breathing → 30s humming → 1 min tongue twisters → 2 min recorded free speech applying one target. Doing this beats skipping entirely. Protect the streak.</p>
+      </div>
+      <h3>Sample tongue twisters by sound</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Target sound</th><th>Twister</th></tr></thead>
+          <tbody>
+            <tr><td>S / sh</td><td>She sells seashells by the seashore</td></tr>
+            <tr><td>R</td><td>Round the rugged rocks the ragged rascal ran</td></tr>
+            <tr><td>T / D crispness</td><td>Red leather, yellow leather (repeat)</td></tr>
+            <tr><td>P / B / breath</td><td>Peter Piper picked a peck of pickled peppers</td></tr>
+            <tr><td>L / vowels</td><td>Truly rural; willingly we walk</td></tr>
+            <tr><td>Pace control</td><td>A proper copper coffee pot (slow, even)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 4 -->
+    <section id="s4">
+      <div class="sec-head"><span class="sec-num">04</span><h2>Targeted Techniques by Goal</h2></div>
+      <p>Find your two targets below and apply the matching techniques during your core drill. Don't adopt every technique at once.</p>
+      <div class="twocol">
+        <div>
+          <h3>Slowing down &amp; pacing</h3>
+          <ul class="clean">
+            <li>Use deliberate pauses at commas and periods — silence reads as confidence, not hesitation.</li>
+            <li>Apply the “one breath, one thought” rule: finish a complete idea, then breathe.</li>
+            <li>Mark a printed passage with slashes where you'll pause, and read to the marks.</li>
+          </ul>
+          <h3>Reducing filler words</h3>
+          <ul class="clean">
+            <li>Replace fillers with silent pauses. A pause feels longer to you than to listeners.</li>
+            <li>Record yourself and tally each filler — awareness alone cuts the count significantly.</li>
+            <li>Slow your overall pace; fillers appear when your mouth outruns your thoughts.</li>
+          </ul>
+          <h3>Clarity &amp; articulation</h3>
+          <ul class="clean">
+            <li>Finish your word endings, especially final “-t”, “-d”, and “-ing”.</li>
+            <li>Open your mouth slightly more than feels natural; mumbling comes from a closed jaw.</li>
+            <li>Practice difficult sounds in isolation, then in words, then in sentences.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Tone, pitch &amp; expressiveness</h3>
+          <ul class="clean">
+            <li>Read children's stories aloud with full expression to expand your pitch range.</li>
+            <li>Avoid upspeak (rising pitch on statements) — let statements fall at the end.</li>
+            <li>Vary pace and volume to emphasize key words instead of staying flat.</li>
+          </ul>
+          <h3>Breath support &amp; projection</h3>
+          <ul class="clean">
+            <li>Breathe from the diaphragm (belly expands, not shoulders) for steady, supported sound.</li>
+            <li>Project from breath, not throat — louder should never mean strained.</li>
+            <li>Plan breath points in longer sentences so you never run out mid-thought.</li>
+          </ul>
+          <h3>Confidence &amp; nerves</h3>
+          <ul class="clean">
+            <li>Practice in low-stakes settings (ordering coffee, small talk) before high-stakes ones.</li>
+            <li>Slow down deliberately when nervous — anxiety speeds everyone up.</li>
+            <li>Anchor on breath before speaking; a single slow exhale resets a racing voice.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5 -->
+    <section id="s5">
+      <div class="sec-head"><span class="sec-num">05</span><h2>Tracking Progress</h2></div>
+      <p>Tracking does two jobs: it shows you're improving when day-to-day feeling says otherwise, and it keeps the habit honest. Keep it lightweight — a tracker you abandon helps no one.</p>
+      <h3>The monthly recording review</h3>
+      <p>Once a month, re-record the same three baseline samples using the same prompts. Listen to last month's and this month's back to back. This A/B comparison is far more revealing than listening in isolation.</p>
+      <h3>Weekly self-rating</h3>
+      <p>Each week, rate your two target skills on a simple 1–5 scale and plot them over time. The trend matters more than any single week.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Week</th><th>Target 1 — Pace</th><th>Target 2 — Filler</th><th>Notes / wins</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>2</td><td>2</td><td>Baseline week</td></tr>
+            <tr><td>2</td><td>2</td><td>3</td><td>Fewer “um”s in meetings</td></tr>
+            <tr><td>3</td><td>3</td><td>3</td><td>Plateau — felt stuck</td></tr>
+            <tr><td>4</td><td>3</td><td>4</td><td>Pauses feeling natural</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout">
+        <span class="ct">Metrics worth counting</span>
+        <p>Fillers per minute, average pause length, words per minute, and a 1–5 confidence rating right after a real conversation. Pick one or two — counting everything turns practice into paperwork.</p>
+      </div>
+      <h3>Milestone checkpoints</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Timeframe</th><th>Realistic milestone</th></tr></thead>
+          <tbody>
+            <tr><td>Week 2</td><td>Practice habit established; baseline recorded</td></tr>
+            <tr><td>Week 4</td><td>Noticeable drop in filler words during practice</td></tr>
+            <tr><td>Week 8</td><td>Targets feel easier; clarity improves in casual talk</td></tr>
+            <tr><td>Week 12</td><td>Improvements start holding under mild pressure</td></tr>
+            <tr><td>Month 6</td><td>New habits surface automatically in real conversations</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 6 -->
+    <section id="s6">
+      <div class="sec-head"><span class="sec-num">06</span><h2>When to Seek Professional Help</h2></div>
+      <p>Self-guided practice handles most general goals — clarity, pacing, confidence, filler reduction. But some situations genuinely benefit from a trained professional, and recognizing that early saves months of frustration.</p>
+      <h3>Consider a speech-language pathologist (SLP) if…</h3>
+      <ul class="clean">
+        <li>You have a persistent stutter, lisp, or specific sound you can't produce.</li>
+        <li>You experience vocal pain, hoarseness, or voice loss — see a doctor first to rule out medical causes.</li>
+        <li>A specific articulation issue hasn't budged after 8–12 weeks of consistent practice.</li>
+        <li>Speech difficulty followed an injury, surgery, or neurological event.</li>
+      </ul>
+      <h3>Consider a voice or speech coach if…</h3>
+      <ul class="clean">
+        <li>Your goals are professional: presenting, public speaking, accent softening, or on-camera presence.</li>
+        <li>You want structured feedback and accountability that self-recording can't provide.</li>
+        <li>You're preparing for a high-stakes event and want targeted, faster results.</li>
+      </ul>
+      <div class="callout">
+        <span class="ct">Self-practice and professional help aren't either/or</span>
+        <p>A few sessions with a coach or SLP to set direction, combined with daily self-practice between sessions, is often the most efficient and affordable path. Use professionals to aim; use daily reps to arrive.</p>
+      </div>
+    </section>
+
+    <!-- 7 -->
+    <section id="s7">
+      <div class="sec-head"><span class="sec-num">07</span><h2>Staying Consistent Over the Long Run</h2></div>
+      <p>Every technique here is worthless without repetition, and repetition lives or dies on habit design. The aim is to make practice nearly automatic.</p>
+      <ul class="clean">
+        <li><b>Anchor it to an existing habit</b> — practice right after brushing your teeth or during your commute.</li>
+        <li><b>Lower the bar on hard days</b> — the 4-minute core keeps the streak alive when life is full.</li>
+        <li><b>Practice in the real world</b> — turn everyday conversations into low-stakes reps; that's where habits transfer.</li>
+        <li><b>Forgive missed days</b> — a gap is a gap, not a failure. Resume the next day without penalty.</li>
+        <li><b>Revisit your targets monthly</b> — once a skill feels automatic, retire it and pick a new one.</li>
+      </ul>
+      <h3>A realistic 90-day arc</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Phase</th><th>Focus</th></tr></thead>
+          <tbody>
+            <tr><td>Days 1–14</td><td>Build the daily habit; record baseline; pick two targets</td></tr>
+            <tr><td>Days 15–45</td><td>Drill targets daily; first monthly review; expect a plateau</td></tr>
+            <tr><td>Days 46–75</td><td>Push targets into real conversations; track weekly ratings</td></tr>
+            <tr><td>Days 76–90</td><td>Second monthly review; retire mastered target; choose the next</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout">
+        <span class="ct">The one thing to remember</span>
+        <p>Sounding better isn't a project you finish — it's a quiet practice you keep. Small, consistent reps compound into a voice that's clearer, steadier, and unmistakably your own.</p>
+      </div>
+    </section>
+
+    <footer>The Continuous Speech Improvement Guide — built for steady, natural progress.</footer>
+  </main>
+</div>
+
+<script>
+  const links=[...document.querySelectorAll('#toc a')];
+  const map=links.map(a=>({a,sec:document.querySelector(a.getAttribute('href'))}));
+  const obs=new IntersectionObserver(es=>{
+    es.forEach(e=>{
+      if(e.isIntersecting){
+        links.forEach(l=>l.classList.remove('active'));
+        const m=map.find(x=>x.sec===e.target);
+        if(m)m.a.classList.add('active');
+      }
+    });
+  },{rootMargin:"-20% 0px -70% 0px"});
+  map.forEach(m=>obs.observe(m.sec));
+</script>
+</body>
+</html>

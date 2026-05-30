@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="SpeechImprover/speechimprover.esproj">
+    <Build />
+    <Deploy />
+  </Project>
+</Solution>
