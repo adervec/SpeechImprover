@@ -4,6 +4,8 @@
 // modes: 'read' (provided text), 'free' (improv / unseen topic),
 //        'twister' (articulation), 'breath' (warm-up), 'baseline'.
 
+import { GENERATED_PASSAGES, PASSAGE_GENRES } from './readingPassages.generated.js';
+
 export const READING_PASSAGES = [
   {
     id: 'read-tide',
@@ -21,6 +23,49 @@ export const READING_PASSAGES = [
     text: `City officials announced on Tuesday that the renovation of the central library will begin next month and is expected to last through the autumn. During construction, the main reading room will close, but a temporary branch in the community center will keep most services available. Residents are encouraged to return borrowed materials before the transition to avoid delays.`,
   },
 ];
+
+// The 3 hand-written passages above seed the exercise-library cards and the
+// baseline set. For the Practice passage picker we offer a much larger browsable
+// corpus: those 3 (filed as "Featured") plus a public-domain library scraped
+// from Project Gutenberg (see scripts/scrape-passages.mjs).
+const FEATURED_PASSAGES = READING_PASSAGES.map((p) => ({
+  ...p,
+  genre: 'featured',
+  author: null,
+  source: null,
+}));
+
+export const READING_LIBRARY = [...FEATURED_PASSAGES, ...GENERATED_PASSAGES];
+
+export const PASSAGE_LIBRARY_MAP = Object.fromEntries(
+  READING_LIBRARY.map((p) => [p.id, p])
+);
+
+// Short, word-boundary-trimmed preview of a passage for menu labels.
+function passageSnippet(text, max = 64) {
+  const s = text.replace(/^["'“”‘’]+/, '').trim();
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max);
+  const sp = cut.lastIndexOf(' ');
+  return `${(sp > 30 ? cut.slice(0, sp) : cut).replace(/[\s,;:]+$/, '')}…`;
+}
+
+// A unique, browsable label for each passage in the picker. The scraped
+// passages share "Book — Author" titles, so we lead with an opening snippet.
+export function passageLabel(p) {
+  if (p.genre === 'featured') return p.title;
+  return `“${passageSnippet(p.text)}” — ${p.author}`;
+}
+
+// Grouped for <optgroup> rendering: Featured first, then each scraped genre.
+const GROUP_LABELS = { featured: 'Featured', ...PASSAGE_GENRES };
+export const PASSAGE_GROUPS = Object.keys(GROUP_LABELS)
+  .map((key) => ({
+    key,
+    label: GROUP_LABELS[key],
+    items: READING_LIBRARY.filter((p) => p.genre === key),
+  }))
+  .filter((g) => g.items.length);
 
 export const FREE_PROMPTS = [
   'Describe your morning, from waking up to leaving the house, in as much detail as you can.',

@@ -20,6 +20,7 @@ import { uid } from './format.js';
 const PROFILE_KEY = 'si.profile';
 const SETTINGS_KEY = 'si.settings';
 const PROGRAM_KEY = 'si.program';
+const MASTERY_KEY = 'si.mastery';
 
 const DEFAULT_PROFILE = {
   name: '',
@@ -57,6 +58,15 @@ function loadProgram() {
   }
 }
 
+function loadMastery() {
+  try {
+    const raw = localStorage.getItem(MASTERY_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
 const StoreContext = createContext(null);
 
 export function StoreProvider({ children }) {
@@ -64,6 +74,7 @@ export function StoreProvider({ children }) {
   const [profile, setProfile] = useState(() => loadLocal(PROFILE_KEY, DEFAULT_PROFILE));
   const [settings, setSettings] = useState(() => loadLocal(SETTINGS_KEY, DEFAULT_SETTINGS));
   const [program, setProgram] = useState(loadProgram);
+  const [masteryProgress, setMasteryProgress] = useState(loadMastery);
   const [loading, setLoading] = useState(true);
   const [storageError, setStorageError] = useState(null);
 
@@ -155,6 +166,43 @@ export function StoreProvider({ children }) {
 
   const clearProgram = useCallback(() => {
     persistProgram(null);
+  }, []);
+
+  // ---- vocal-mastery track (persisted per-stage best score + matched flag) ----
+  function persistMastery(next) {
+    setMasteryProgress(next);
+    try {
+      localStorage.setItem(MASTERY_KEY, JSON.stringify(next));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const recordTechniqueResult = useCallback((techId, stageId, { score = null, matched = false } = {}) => {
+    setMasteryProgress((prev) => {
+      const cur = prev || {};
+      const tech = cur[techId] || { stages: {} };
+      const stages = tech.stages || {};
+      const old = stages[stageId] || { attempts: 0, best: null, matched: false };
+      const best = score == null ? old.best : old.best == null ? score : Math.max(old.best, score);
+      const nextStage = {
+        attempts: (old.attempts || 0) + 1,
+        best,
+        matched: old.matched || matched,
+        lastAt: new Date().toISOString(),
+      };
+      const next = { ...cur, [techId]: { ...tech, stages: { ...stages, [stageId]: nextStage } } };
+      try {
+        localStorage.setItem(MASTERY_KEY, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }, []);
+
+  const resetMastery = useCallback(() => {
+    persistMastery({});
   }, []);
 
   // Add a finished session (optionally with an audio blob).
@@ -273,11 +321,14 @@ export function StoreProvider({ children }) {
       profile,
       settings,
       program,
+      masteryProgress,
       updateProfile,
       updateSettings,
       startProgram,
       completeProgramStep,
       clearProgram,
+      recordTechniqueResult,
+      resetMastery,
       addSession,
       updateSession,
       removeSession,
@@ -290,8 +341,9 @@ export function StoreProvider({ children }) {
       getAudioBlob,
     }),
     [
-      loading, storageError, sessions, profile, settings, program, updateProfile,
-      updateSettings, startProgram, completeProgramStep, clearProgram, addSession,
+      loading, storageError, sessions, profile, settings, program, masteryProgress,
+      updateProfile, updateSettings, startProgram, completeProgramStep, clearProgram,
+      recordTechniqueResult, resetMastery, addSession,
       updateSession, removeSession, purgeAudio, purgeAllAudio, clearSeedData,
       resetAllData, rescoreAll, refresh, getAudioBlob,
     ]

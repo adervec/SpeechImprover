@@ -9,6 +9,8 @@ import { applyTheme } from './styles/themes.js';
 import Dashboard from './views/Dashboard.jsx';
 import Practice from './views/Practice.jsx';
 import Exercises from './views/Exercises.jsx';
+import Mastery from './views/Mastery.jsx';
+import VoiceLab from './views/VoiceLab.jsx';
 import Trends from './views/Trends.jsx';
 import History from './views/History.jsx';
 import SessionDetail from './views/SessionDetail.jsx';
@@ -22,6 +24,8 @@ const TITLES = {
   '': 'Dashboard',
   practice: 'Practice',
   exercises: 'Exercises',
+  mastery: 'Vocal mastery',
+  voicelab: 'Voice lab',
   trends: 'Trends',
   history: 'History',
   session: 'Session detail',
@@ -35,9 +39,13 @@ const TITLES = {
 function View({ route, navigate }) {
   switch (route.page) {
     case 'practice':
-      return <Practice key={`${route.query.exercise || 'new'}-${route.query.step ?? ''}`} route={route} navigate={navigate} />;
+      return <Practice key={`${route.query.exercise || route.query.technique || 'new'}-${route.query.step ?? route.query.stage ?? ''}`} route={route} navigate={navigate} />;
     case 'exercises':
       return <Exercises route={route} navigate={navigate} />;
+    case 'mastery':
+      return <Mastery route={route} navigate={navigate} />;
+    case 'voicelab':
+      return <VoiceLab route={route} navigate={navigate} />;
     case 'trends':
       return <Trends route={route} navigate={navigate} />;
     case 'history':

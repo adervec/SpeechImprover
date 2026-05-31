@@ -10,6 +10,8 @@ const NAV = [
   { id: '', label: 'Dashboard', icon: '◎' },
   { id: 'practice', label: 'Practice', icon: '●' },
   { id: 'exercises', label: 'Exercises', icon: '✦' },
+  { id: 'mastery', label: 'Vocal mastery', icon: '🏆' },
+  { id: 'voicelab', label: 'Voice lab', icon: '🗣️' },
   { id: 'trends', label: 'Trends', icon: '📈' },
   { id: 'history', label: 'History', icon: '🕘' },
   { id: 'references', label: 'References', icon: '🎯' },

@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Scraper raw-text cache (regenerable)
+scripts/.cache
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -5,29 +5,10 @@
 
 import { ScoreRing, RadarChart } from './charts.jsx';
 import { AttributeBars } from './ui.jsx';
+import AnnotatedTranscript from './AnnotatedTranscript.jsx';
+import ImprovedVoicePreview from './ImprovedVoicePreview.jsx';
 import { ATTRIBUTES, REFERENCE_PROFILES } from '../lib/analysis/attributes.js';
-import { FILLER_WORDS, FILLER_PHRASES } from '../lib/analysis/speechMetrics.js';
 import { formatDuration } from '../lib/format.js';
-
-function HighlightedTranscript({ text }) {
-  if (!text) return <span className="muted">No transcript captured.</span>;
-  const phrases = FILLER_PHRASES.map((p) => p.replace(/\s+/g, '\\s+'));
-  const pattern = new RegExp(`\\b(${[...phrases, ...FILLER_WORDS].join('|')})\\b`, 'gi');
-  const parts = [];
-  let lastIndex = 0;
-  let match = pattern.exec(text);
-  while (match !== null) {
-    if (match.index > lastIndex) {
-      parts.push(<span key={parts.length}>{text.slice(lastIndex, match.index)}</span>);
-    }
-    parts.push(<span key={parts.length} className="highlight-filler">{match[0]}</span>);
-    lastIndex = pattern.lastIndex;
-    if (match.index === pattern.lastIndex) pattern.lastIndex += 1;
-    match = pattern.exec(text);
-  }
-  if (lastIndex < text.length) parts.push(<span key={parts.length}>{text.slice(lastIndex)}</span>);
-  return <p style={{ lineHeight: 1.8 }}>{parts}</p>;
-}
 
 function MetricRow({ label, value }) {
   return (
@@ -74,9 +55,83 @@ function CompletionReport({ session, audioUrl }) {
   );
 }
 
+function TechniqueReport({ session, audioUrl }) {
+  const t = session.technique || {};
+  const ev = t.evaluation || {};
+  const m = session.metrics || {};
+  const showTranscript = session.transcript && ['read', 'twister', 'free'].includes(session.mode);
+  return (
+    <div className="stack">
+      <div className="card" style={{ display: 'flex', gap: 18, alignItems: 'center' }}>
+        <div style={{ fontSize: 46, lineHeight: 1 }}>{t.icon || '🏆'}</div>
+        <div style={{ flex: 1 }}>
+          <div className="tag">Mastery · {t.tier} · {t.name}</div>
+          <h2 style={{ margin: '2px 0' }}>{t.stageTitle}</h2>
+          <p className="muted small">
+            {ev.matched ? '✅ ' : ''}{ev.headline}
+            {t.stageCount ? ` · stage ${(t.stageIndex ?? 0) + 1} of ${t.stageCount}` : ''}
+          </p>
+        </div>
+        {ev.score != null && <ScoreRing value={ev.score} size={96} />}
+      </div>
+
+      {ev.breakdown?.length > 0 && (
+        <div className="card">
+          <div className="card-head"><h3>How close to the target</h3></div>
+          {ev.breakdown.map((b, i) => (
+            <div key={i} className="attr-row">
+              <span className="small">{b.label} {b.ok ? <span style={{ color: 'var(--good)' }}>✓</span> : ''}</span>
+              <span className="mono small">{b.measured}</span>
+              <div className="attr-bar-track">
+                <div className="attr-bar-fill" style={{ width: `${b.score ?? 0}%`, background: b.ok ? 'var(--good)' : 'var(--accent)' }} />
+              </div>
+              {b.hint && <span className="tiny muted" style={{ gridColumn: '1 / -1' }}>{b.hint}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {ev.note && (
+        <div className="card tight" style={{ borderLeft: '4px solid var(--accent)' }}>
+          <p className="small"><b>Coach:</b> {ev.note}</p>
+        </div>
+      )}
+
+      {showTranscript && (
+        <div className="card">
+          <div className="card-head"><h3>Transcript — what went well &amp; what to fix</h3></div>
+          <AnnotatedTranscript session={session} />
+        </div>
+      )}
+
+      <div className="card">
+        <div className="card-head"><h3>Measured signals</h3></div>
+        <div className="grid cols-2">
+          <MetricRow label="Median pitch (F0)" value={m.medianF0Hz ? `${Math.round(m.medianF0Hz)} Hz` : 'n/a'} />
+          <MetricRow label="Pitch variation" value={`${(m.f0StdSemitones || 0).toFixed(1)} st`} />
+          <MetricRow label="Speaking pace" value={m.wpm ? `${Math.round(m.wpm)} wpm` : 'n/a'} />
+          <MetricRow label="End-of-phrase pitch" value={`${(m.terminalSlope || 0) >= 0 ? '+' : ''}${(m.terminalSlope || 0).toFixed(1)} st/s`} />
+          <MetricRow label="Energy held to end" value={`${Math.round((m.trailingRatio || 0) * 100)}% of body`} />
+          <MetricRow label="Length" value={formatDuration(m.durationSec)} />
+        </div>
+      </div>
+
+      {audioUrl && (
+        <div className="card">
+          <div className="card-head"><h3>Recording</h3></div>
+          <audio src={audioUrl} controls style={{ width: '100%' }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SessionReport({ session, audioUrl, onSelectAttr, focusAttrs = [] }) {
   if (session.assessment === 'completion') {
     return <CompletionReport session={session} audioUrl={audioUrl} />;
+  }
+  if (session.assessment === 'technique') {
+    return <TechniqueReport session={session} audioUrl={audioUrl} />;
   }
   const { scores, overall, distances, metrics } = session;
   const m = metrics || {};
@@ -131,21 +186,20 @@ export default function SessionReport({ session, audioUrl, onSelectAttr, focusAt
         </div>
       </div>
 
-      <div className="grid cols-2">
-        <div className="card">
-          <div className="card-head"><h3>Transcript</h3>
-            <span className="tiny muted">fillers <span className="highlight-filler">highlighted</span></span>
-          </div>
-          <HighlightedTranscript text={session.transcript} />
-          {!session.recognitionSupported && (
-            <p className="tiny muted" style={{ marginTop: 10 }}>
-              Live transcription was unavailable in this browser, so pace / filler / vocabulary
-              scores were skipped. Try Chrome or Edge for full analysis.
-            </p>
-          )}
-        </div>
-        <div className="card">
-          <div className="card-head"><h3>Measured signals</h3></div>
+      <div className="card">
+        <div className="card-head"><h3>Transcript — what went well &amp; what to fix</h3></div>
+        <AnnotatedTranscript session={session} />
+        {!session.recognitionSupported && (
+          <p className="tiny muted" style={{ marginTop: 10 }}>
+            Live transcription was unavailable in this browser, so pace / filler / vocabulary
+            scores were skipped. Try Chrome or Edge for full analysis.
+          </p>
+        )}
+      </div>
+
+      <div className="card">
+        <div className="card-head"><h3>Measured signals</h3></div>
+        <div className="grid cols-2">
           <MetricRow label="Speaking pace" value={`${Math.round(m.wpm || 0)} wpm`} />
           <MetricRow label="Fillers / min" value={(m.fillersPerMin || 0).toFixed(1)} />
           <MetricRow label="Median pitch (F0)" value={m.medianF0Hz ? `${Math.round(m.medianF0Hz)} Hz` : 'n/a'} />
@@ -156,6 +210,8 @@ export default function SessionReport({ session, audioUrl, onSelectAttr, focusAt
           <MetricRow label="Energy trailing-off" value={`${Math.round((m.trailingRatio || 0) * 100)}% of body`} />
         </div>
       </div>
+
+      {audioUrl && <ImprovedVoicePreview audioUrl={audioUrl} session={session} />}
 
       {audioUrl && (
         <div className="card">

@@ -2,7 +2,29 @@
 // work on first run. Marked seed:true so they can be cleared in Settings.
 
 import { scoreFromMetrics } from './analysis/index.js';
+import { getExercise } from './exercises.js';
 import { uid } from './format.js';
+
+// Canned free-speech transcripts (with realistic fillers / repeats) so the
+// annotated-transcript view has something to mark up on seed data.
+const FREE_TRANSCRIPTS = [
+  'So um I guess my morning is is pretty normal, I wake up and like I make coffee and basically just try to you know ease into the day before I actually check my email.',
+  'Well the thing I want to talk about is um a trip I took last year, and it was honestly it was one of the best experiences, like the people were so welcoming and the food was just amazing.',
+  'I think the main reason is that um mornings give you a kind of a fresh start, and you know you can actually plan the day before everything gets like busy and and chaotic.',
+  'To be honest I um I solved it by just breaking the problem into smaller pieces, and then like I tackled them one at a time until the whole thing basically came together.',
+];
+
+// Turn a passage into a lightly-imperfect "reading" so the markup demonstrates a
+// filler, a repeated word and a skipped word against the reference.
+function demoRead(prompt) {
+  const words = prompt.replace(/\s+/g, ' ').trim().split(' ');
+  if (words.length > 16) {
+    words.splice(4, 0, 'um'); // inserted filler
+    words.splice(9, 0, words[9]); // repeated word
+    words.splice(14, 1); // skipped word
+  }
+  return words.join(' ');
+}
 
 function lerp(a, b, t) {
   return a + (b - a) * t;
@@ -78,6 +100,15 @@ export function buildSeedSessions(profile = {}) {
     const metrics = buildMetrics(p, item.mode);
     const { scores, overall, distances } = scoreFromMetrics(metrics, profile);
     const createdAt = new Date(Date.now() - item.daysAgo * 86400000).toISOString();
+
+    const ex = getExercise(item.exerciseId);
+    const isRead = item.mode === 'read';
+    const prompt = isRead ? ex?.prompt || '' : '';
+    let transcript;
+    if (isRead && prompt) transcript = demoRead(prompt);
+    else if (item.mode === 'twister') transcript = ex?.prompt || '';
+    else transcript = FREE_TRANSCRIPTS[i % FREE_TRANSCRIPTS.length];
+
     return {
       id: `SEED-${uid()}`,
       createdAt,
@@ -85,10 +116,10 @@ export function buildSeedSessions(profile = {}) {
       mode: item.mode,
       exerciseId: item.exerciseId,
       exerciseTitle: item.title,
-      prompt: '',
+      prompt,
       targetAttributes: [],
       durationSec: metrics.durationSec,
-      transcript: '',
+      transcript,
       recognitionConfidence: metrics.recognitionConfidence,
       recognitionSupported: true,
       metrics,

@@ -3,14 +3,18 @@ import { useStore } from '../lib/store.jsx';
 import { useRecorder } from '../lib/recorderContext.jsx';
 import { useToast, Modal } from '../components/ui.jsx';
 import SessionReport from '../components/SessionReport.jsx';
+import ArticulationModel from '../components/ArticulationModel.jsx';
 import { analyzeRecording, assessCompletion } from '../lib/analysis/index.js';
 import { ATTRIBUTE_MAP } from '../lib/analysis/attributes.js';
 import {
   getExercise,
-  READING_PASSAGES,
+  READING_LIBRARY,
+  PASSAGE_GROUPS,
+  passageLabel,
   FREE_PROMPTS,
   INTERVIEW_PROMPTS,
 } from '../lib/exercises.js';
+import { getTechniqueExercise, evaluateStage } from '../lib/vocalMastery.js';
 import { formatDuration } from '../lib/format.js';
 
 const MODE_LABELS = {
@@ -18,6 +22,7 @@ const MODE_LABELS = {
   free: 'Free / improv speaking',
   twister: 'Articulation drill',
   breath: 'Warm-up',
+  sustain: 'Sustained tone',
 };
 
 function buildCustomExercise(mode, prompt, passageId) {
@@ -41,7 +46,7 @@ function buildCustomExercise(mode, prompt, passageId) {
 }
 
 export default function Practice({ route, navigate }) {
-  const { profile, settings, addSession, updateSession, program, completeProgramStep } = useStore();
+  const { profile, settings, addSession, updateSession, program, completeProgramStep, recordTechniqueResult } = useStore();
   const recorder = useRecorder();
   const toast = useToast();
 
@@ -55,20 +60,24 @@ export default function Practice({ route, navigate }) {
 
   // Resolve the exercise: from the program step, else from the URL exercise id.
   const queryExerciseId = route.query.exercise;
+  const techniqueId = route.query.technique;
   const queryExercise = programStep
     ? programStep.exercise
-    : queryExerciseId
-      ? getExercise(queryExerciseId) || null
-      : null;
+    : techniqueId
+      ? getTechniqueExercise(techniqueId, route.query.stage ? parseInt(route.query.stage, 10) : 0)
+      : queryExerciseId
+        ? getExercise(queryExerciseId) || null
+        : null;
 
   const [phase, setPhase] = useState('setup'); // setup | recording | analyzing | result
   const [chooserMode, setChooserMode] = useState(queryExercise ? queryExercise.mode : 'free');
   const [customText, setCustomText] = useState('');
-  const [selectedPassage, setSelectedPassage] = useState(READING_PASSAGES[0].id);
+  const [selectedPassage, setSelectedPassage] = useState(READING_LIBRARY[0].id);
   const [freePrompt, setFreePrompt] = useState(FREE_PROMPTS[0]);
   const [exercise, setExercise] = useState(queryExercise);
   const [result, setResult] = useState(null); // { session, audioUrl }
   const [showDebrief, setShowDebrief] = useState(false);
+  const [showModel, setShowModel] = useState(true);
   const [notes, setNotes] = useState('');
   const audioUrlRef = useRef(null);
 
@@ -80,7 +89,7 @@ export default function Practice({ route, navigate }) {
   const activeExercise = useMemo(() => {
     if (exercise) return exercise;
     if (chooserMode === 'read') {
-      const passage = READING_PASSAGES.find((p) => p.id === selectedPassage);
+      const passage = READING_LIBRARY.find((p) => p.id === selectedPassage);
       const text = customText.trim() || passage?.text || '';
       return buildCustomExercise('read', text, customText.trim() ? null : passage?.id);
     }
@@ -105,6 +114,7 @@ export default function Practice({ route, navigate }) {
     const rec = await recorder.stopRecording();
     try {
       const isWarmup = activeExercise.mode === 'breath' || activeExercise.category === 'Warm-up';
+      const isTechnique = !!activeExercise.technique;
       const analysis = await analyzeRecording({
         blob: rec.blob,
         durationSec: rec.durationSec,
@@ -127,30 +137,49 @@ export default function Practice({ route, navigate }) {
         metrics: analysis.metrics,
         notes: '',
       };
-      const session = isWarmup
-        ? {
-            ...base,
-            assessment: 'completion',
-            completion: assessCompletion(analysis.metrics),
-            scores: null,
-            overall: null,
-            distances: null,
-          }
-        : {
-            ...base,
-            assessment: 'full',
-            scores: analysis.scores,
-            overall: analysis.overall,
-            distances: analysis.distances,
-          };
+      let session;
+      if (isTechnique) {
+        const evaluation = evaluateStage(activeExercise.stage, analysis.metrics, analysis.scores, profile);
+        session = {
+          ...base,
+          assessment: 'technique',
+          scores: null,
+          overall: null,
+          distances: null,
+          technique: { ...activeExercise.technique, evaluation },
+        };
+      } else if (isWarmup) {
+        session = {
+          ...base,
+          assessment: 'completion',
+          completion: assessCompletion(analysis.metrics),
+          scores: null,
+          overall: null,
+          distances: null,
+        };
+      } else {
+        session = {
+          ...base,
+          assessment: 'full',
+          scores: analysis.scores,
+          overall: analysis.overall,
+          distances: analysis.distances,
+        };
+      }
       const saved = await addSession(session, rec.blob, rec.mime);
+      if (isTechnique) {
+        recordTechniqueResult(activeExercise.technique.id, activeExercise.technique.stageId, {
+          score: session.technique.evaluation.score,
+          matched: session.technique.evaluation.matched,
+        });
+      }
       if (programStepIndex >= 0) completeProgramStep(programStepIndex, saved.id);
       const audioUrl = URL.createObjectURL(rec.blob);
       audioUrlRef.current = audioUrl;
       setResult({ session: saved, audioUrl });
       setNotes('');
       setPhase('result');
-      setShowDebrief(true);
+      setShowDebrief(!isTechnique);
     } catch (e) {
       toast(`Analysis failed: ${e.message || e}`);
       setPhase('setup');
@@ -205,7 +234,9 @@ export default function Practice({ route, navigate }) {
             ) : (
               <>
                 <button className="btn" onClick={reset}>Practice again</button>
-                <button className="btn primary" onClick={() => navigate('')}>Done</button>
+                <button className="btn primary" onClick={() => navigate(result.session.technique ? 'mastery' : '')}>
+                  {result.session.technique ? 'Back to mastery' : 'Done'}
+                </button>
               </>
             )}
             <button className="btn" onClick={() => navigate('session', { param: result.session.id })}>Full detail</button>
@@ -283,11 +314,23 @@ export default function Practice({ route, navigate }) {
               {chooserMode === 'read' ? (
                 <div className="stack">
                   <label className="field">
-                    Provided passage
+                    Provided passage — {READING_LIBRARY.length} from the public-domain library
                     <select value={selectedPassage} onChange={(e) => { setSelectedPassage(e.target.value); setCustomText(''); }}>
-                      {READING_PASSAGES.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
+                      {PASSAGE_GROUPS.map((g) => (
+                        <optgroup key={g.key} label={`${g.label} (${g.items.length})`}>
+                          {g.items.map((p) => <option key={p.id} value={p.id}>{passageLabel(p)}</option>)}
+                        </optgroup>
+                      ))}
                     </select>
                   </label>
+                  <button className="btn ghost sm" style={{ alignSelf: 'flex-start' }}
+                    onClick={() => {
+                      const r = READING_LIBRARY[Math.floor(Math.random() * READING_LIBRARY.length)];
+                      setSelectedPassage(r.id);
+                      setCustomText('');
+                    }}>
+                    🎲 Random passage
+                  </button>
                   <label className="field">
                     …or paste your own / an unseen paper to read
                     <textarea value={customText} onChange={(e) => setCustomText(e.target.value)} placeholder="Paste any English text to read aloud…" />
@@ -358,6 +401,26 @@ export default function Practice({ route, navigate }) {
           </span>
         </div>
       </div>
+
+      {(activeExercise.mode === 'read' || activeExercise.mode === 'twister') && activeExercise.prompt && (
+        <div className="card">
+          <div className="card-head">
+            <div>
+              <h3>🫦 Ideal mouth movements</h3>
+              <span className="tiny muted">a real-time model of the lips, tongue &amp; jaw — mimic along, or let it follow while you record</span>
+            </div>
+            <button className="btn ghost sm" onClick={() => setShowModel((s) => !s)}>{showModel ? 'Hide' : 'Show'}</button>
+          </div>
+          {showModel && (
+            <ArticulationModel
+              key={activeExercise.id}
+              text={activeExercise.prompt}
+              targetWpm={activeExercise.mode === 'twister' ? 95 : 130}
+              recording={recording}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }

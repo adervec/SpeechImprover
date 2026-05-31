@@ -667,4 +667,147 @@ table.data tr:hover td {
   .devicebar {
     font-size: 0.72rem;
   }
+  .artic-svg {
+    width: 132px;
+    height: 132px;
+  }
+}
+
+/* ---------- annotated transcript ---------- */
+.annotated-transcript .transcript-body {
+  font-size: 1.02rem;
+}
+.tok {
+  border-radius: 4px;
+  padding: 0 2px;
+  transition: filter 0.12s ease;
+}
+.tok:hover {
+  filter: brightness(1.18);
+  cursor: help;
+}
+.tok-good {
+  border-bottom: 2px solid color-mix(in srgb, var(--good) 75%, transparent);
+}
+.tok-filler {
+  background: color-mix(in srgb, var(--bad) 34%, transparent);
+  color: var(--text);
+  font-weight: 600;
+}
+.tok-filler-soft {
+  border-bottom: 2px dashed color-mix(in srgb, var(--warn) 85%, transparent);
+}
+.tok-repeat {
+  background: color-mix(in srgb, var(--warn) 28%, transparent);
+}
+.tok-overused {
+  border-bottom: 2px dotted color-mix(in srgb, var(--accent-2) 85%, transparent);
+}
+.tok-misread {
+  background: color-mix(in srgb, var(--bad) 30%, transparent);
+  text-decoration: underline wavy color-mix(in srgb, var(--bad) 85%, transparent);
+  text-underline-offset: 3px;
+}
+.tok-extra {
+  color: var(--text-dim);
+  border-bottom: 2px dashed color-mix(in srgb, var(--bad) 60%, transparent);
+}
+.tok-omission {
+  color: var(--warn);
+  opacity: 0.9;
+  text-decoration: line-through;
+  font-style: italic;
+  padding: 0 1px;
+}
+.tok-omission::before {
+  content: '[';
+  opacity: 0.7;
+}
+.tok-omission::after {
+  content: ']';
+  opacity: 0.7;
+}
+
+/* ---------- articulation model ---------- */
+.artic {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.artic-views {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.artic-views figure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+}
+.artic-svg {
+  width: 156px;
+  height: 156px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.artic-readout {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.artic-sound {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--accent-2);
+  min-width: 2ch;
+}
+.artic-word {
+  font-size: 1.05rem;
+  color: var(--text);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  padding: 2px 12px;
+  border-radius: 30px;
+}
+.artic-tip {
+  min-height: 2.4em;
+  margin: 0;
+}
+.artic-progress {
+  height: 9px;
+  border-radius: 5px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  cursor: pointer;
+}
+.artic-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  border-radius: 5px;
+  transition: width 0.05s linear;
+}
+
+/* ---------- vocal mastery ---------- */
+.technique-card {
+  display: flex;
+  flex-direction: column;
+}
+.technique-card[data-locked='true'] {
+  opacity: 0.6;
+}
+.technique-card[data-locked='true'] .attr-bar-fill {
+  background: var(--text-dim) !important;
+}
+
+/* ---------- voice lab ---------- */
+.tts-word {
+  background: color-mix(in srgb, var(--accent) 38%, transparent);
+  border-radius: 4px;
+  padding: 0 2px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent);
 }
