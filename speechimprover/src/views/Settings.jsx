@@ -10,7 +10,7 @@ import { formatBytes } from '../lib/format.js';
 export default function Settings() {
   const {
     settings, updateSettings, profile, updateProfile, sessions,
-    purgeAllAudio, clearSeedData, resetAllData, refresh,
+    purgeAllAudio, resetAllData, refresh,
   } = useStore();
   const { startMonitor, stopMonitor, isMonitoring, recognitionSupported } = useRecorder();
   const { inputs, outputs, hasLabels, refresh: refreshDevices } = useMediaDevices();
@@ -20,7 +20,6 @@ export default function Settings() {
   const [includeAudio, setIncludeAudio] = useState(true);
 
   const totalAudio = useMemo(() => sessions.reduce((sum, s) => sum + (s.audioBytes || 0), 0), [sessions]);
-  const seedCount = useMemo(() => sessions.filter((s) => s.seed).length, [sessions]);
   const audioCount = useMemo(() => sessions.filter((s) => s.audioId).length, [sessions]);
 
   async function grantAccess() {
@@ -150,7 +149,6 @@ export default function Settings() {
         <h4 style={{ margin: '12px 0 8px' }}>Purge &amp; reset</h4>
         <div className="row wrap">
           <button className="btn" disabled={!audioCount} onClick={() => setConfirm('audio')}>Purge all audio (keep scores)</button>
-          {seedCount > 0 && <button className="btn" onClick={() => setConfirm('seed')}>Remove {seedCount} sample sessions</button>}
           <button className="btn danger" disabled={!sessions.length} onClick={() => setConfirm('all')}>Delete everything</button>
         </div>
         <p className="tiny muted" style={{ marginTop: 10 }}>
@@ -160,7 +158,7 @@ export default function Settings() {
 
       {confirm && (
         <Modal
-          title={confirm === 'audio' ? 'Purge all audio?' : confirm === 'seed' ? 'Remove sample data?' : 'Delete everything?'}
+          title={confirm === 'audio' ? 'Purge all audio?' : 'Delete everything?'}
           onClose={() => setConfirm(null)}
           footer={<>
             <button className="btn ghost" onClick={() => setConfirm(null)}>Cancel</button>
@@ -168,18 +166,16 @@ export default function Settings() {
               className={`btn ${confirm === 'all' ? 'danger' : 'primary'}`}
               onClick={async () => {
                 if (confirm === 'audio') { await purgeAllAudio(); toast('All audio purged.'); }
-                else if (confirm === 'seed') { await clearSeedData(); toast('Sample data removed.'); }
                 else { await resetAllData(); toast('All data deleted.'); }
                 setConfirm(null);
               }}
             >
-              {confirm === 'audio' ? 'Purge audio' : confirm === 'seed' ? 'Remove samples' : 'Delete all'}
+              {confirm === 'audio' ? 'Purge audio' : 'Delete all'}
             </button>
           </>}
         >
           <p className="muted">
             {confirm === 'audio' && `This deletes ${audioCount} audio recording(s) (${formatBytes(totalAudio)}) but keeps every score, metric and trend.`}
-            {confirm === 'seed' && `This removes the ${seedCount} pre-loaded sample sessions used to demonstrate trends. Your own recordings are untouched.`}
             {confirm === 'all' && 'This permanently deletes all sessions, scores and audio from this device. Consider exporting first.'}
           </p>
         </Modal>

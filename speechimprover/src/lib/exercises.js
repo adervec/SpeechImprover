@@ -5,6 +5,7 @@
 //        'twister' (articulation), 'breath' (warm-up), 'baseline'.
 
 import { GENERATED_PASSAGES, PASSAGE_GENRES } from './readingPassages.generated.js';
+import { TROUBLE_SOUNDS, troubleInstructions } from './troubleSounds.js';
 
 export const READING_PASSAGES = [
   {
@@ -43,7 +44,7 @@ export const PASSAGE_LIBRARY_MAP = Object.fromEntries(
 
 // Short, word-boundary-trimmed preview of a passage for menu labels.
 function passageSnippet(text, max = 64) {
-  const s = text.replace(/^["'“”‘’]+/, '').trim();
+  const s = text.replace(/\s+/g, ' ').replace(/^["'“”‘’]+/, '').trim();
   if (s.length <= max) return s;
   const cut = s.slice(0, max);
   const sp = cut.lastIndexOf(' ');
@@ -145,6 +146,20 @@ export const EXERCISES = [
     prompt:
       'The bright kite lifted lightly, drifting past the distant rooftops at sunset.',
   },
+  // --- trouble sounds (targeted phoneme drills) ---
+  ...TROUBLE_SOUNDS.map((t) => ({
+    id: `trouble-${t.id}`,
+    title: `Trouble sound — ${t.label}`,
+    category: 'Trouble sounds',
+    mode: 'twister',
+    durationSec: 40,
+    targetAttributes: ['clarity'],
+    guideSection: '04 · Clarity & articulation',
+    instructions: troubleInstructions(t),
+    prompt: t.prompt,
+    troubleSound: t.id,
+    ipa: t.ipa,
+  })),
   // --- core drills (guide §3/§4) ---
   ...READING_PASSAGES.map((p) => ({
     id: `core-${p.id}`,
@@ -248,6 +263,7 @@ export function getExercise(id) {
 export const CATEGORIES = [
   'Warm-up',
   'Articulation',
+  'Trouble sounds',
   'Reading',
   'Free / improv',
   'High-pressure',

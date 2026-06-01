@@ -617,6 +617,7 @@ table.data tr:hover td {
   padding: 16px 18px;
   font-size: 1.05rem;
   line-height: 1.6;
+  white-space: pre-wrap; /* preserve verse line breaks for poetry passages */
 }
 .highlight-filler {
   background: color-mix(in srgb, var(--bad) 30%, transparent);

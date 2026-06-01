@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../lib/store.jsx';
 import { useRecorder } from '../lib/recorderContext.jsx';
-import { useToast, Modal } from '../components/ui.jsx';
+import { useToast } from '../components/ui.jsx';
 import SessionReport from '../components/SessionReport.jsx';
 import ArticulationModel from '../components/ArticulationModel.jsx';
 import { analyzeRecording, assessCompletion } from '../lib/analysis/index.js';
@@ -76,7 +76,6 @@ export default function Practice({ route, navigate }) {
   const [freePrompt, setFreePrompt] = useState(FREE_PROMPTS[0]);
   const [exercise, setExercise] = useState(queryExercise);
   const [result, setResult] = useState(null); // { session, audioUrl }
-  const [showDebrief, setShowDebrief] = useState(false);
   const [showModel, setShowModel] = useState(true);
   const [notes, setNotes] = useState('');
   const audioUrlRef = useRef(null);
@@ -179,7 +178,6 @@ export default function Practice({ route, navigate }) {
       setResult({ session: saved, audioUrl });
       setNotes('');
       setPhase('result');
-      setShowDebrief(!isTechnique);
     } catch (e) {
       toast(`Analysis failed: ${e.message || e}`);
       setPhase('setup');
@@ -211,51 +209,47 @@ export default function Practice({ route, navigate }) {
 
   // ---------- render ----------
   if (phase === 'result' && result) {
+    const isTechnique = !!result.session.technique;
+    const programInfo = inProgramMode ? { done: progDone, total: progTotal, nextPendingIdx } : null;
     return (
-      <>
-        <div className="row spread" style={{ marginBottom: 18 }}>
+      <div className="stack">
+        <div className="row spread wrap" style={{ marginBottom: 2 }}>
           <div>
             <div className="tag">
               {result.session.exerciseTitle}
               {inProgramMode && progTotal ? ` · program ${progDone}/${progTotal} done` : ''}
             </div>
-            <h1>Session debrief</h1>
+            <h1 style={{ margin: '2px 0' }}>Session debrief</h1>
+            <p className="muted small" style={{ margin: 0 }}>
+              Review your transcript and the ideal articulation below, then decide whether to practice again or continue.
+            </p>
           </div>
-          <div className="row wrap">
-            {inProgramMode ? (
-              <>
-                <button className="btn" onClick={() => { saveNotes(); navigate('exercises'); }}>Back to program</button>
-                {nextPendingIdx >= 0 ? (
-                  <button className="btn primary" onClick={() => goToStep(nextPendingIdx)}>Next step →</button>
-                ) : (
-                  <button className="btn primary" onClick={() => { saveNotes(); navigate('exercises'); }}>Finish 🎉</button>
-                )}
-              </>
-            ) : (
-              <>
-                <button className="btn" onClick={reset}>Practice again</button>
-                <button className="btn primary" onClick={() => navigate(result.session.technique ? 'mastery' : '')}>
-                  {result.session.technique ? 'Back to mastery' : 'Done'}
-                </button>
-              </>
-            )}
-            <button className="btn" onClick={() => navigate('session', { param: result.session.id })}>Full detail</button>
-          </div>
+          <button className="btn ghost sm" onClick={() => { saveNotes(); navigate('session', { param: result.session.id }); }}>
+            Full detail ↗
+          </button>
         </div>
-        <SessionReport session={result.session} audioUrl={result.audioUrl} focusAttrs={result.session.targetAttributes} />
-        {showDebrief && (
-          <DebriefModal
+
+        {!isTechnique && (
+          <DebriefPanel
             session={result.session}
             notes={notes}
             setNotes={setNotes}
-            program={inProgramMode ? { done: progDone, total: progTotal, nextPendingIdx } : null}
-            onNext={() => { setShowDebrief(false); goToStep(nextPendingIdx); }}
-            onToProgram={() => { saveNotes(); setShowDebrief(false); navigate('exercises'); }}
-            onClose={() => { saveNotes(); setShowDebrief(false); }}
-            onAgain={() => { setShowDebrief(false); reset(); }}
+            onSaveNotes={saveNotes}
+            program={programInfo}
           />
         )}
-      </>
+
+        <SessionReport session={result.session} audioUrl={result.audioUrl} focusAttrs={result.session.targetAttributes} />
+
+        <DecisionBar
+          program={programInfo}
+          isTechnique={isTechnique}
+          onAgain={reset}
+          onNext={() => goToStep(nextPendingIdx)}
+          onToProgram={() => { saveNotes(); navigate('exercises'); }}
+          onDone={() => { saveNotes(); navigate(isTechnique ? 'mastery' : ''); }}
+        />
+      </div>
     );
   }
 
@@ -380,9 +374,12 @@ export default function Practice({ route, navigate }) {
             <p style={{ minHeight: 40 }}>
               {recorder.finalText} <span className="muted">{recorder.interim}</span>
               {!recorder.finalText && !recorder.interim && (
-                <span className="muted">{recognitionOn ? 'Listening…' : 'Transcription off.'}</span>
+                <span className="muted">{recognitionOn ? 'Listening… start speaking' : 'Transcription off.'}</span>
               )}
             </p>
+            {recorder.recognitionError && (
+              <p className="tiny" style={{ color: 'var(--warn)', margin: '4px 0 0' }}>⚠️ {recorder.recognitionError}</p>
+            )}
           </div>
         )}
 
@@ -425,35 +422,19 @@ export default function Practice({ route, navigate }) {
   );
 }
 
-function DebriefModal({ session, notes, setNotes, program, onClose, onAgain, onNext, onToProgram }) {
+// Inline summary + per-session note. Rendered in the page flow (no modal) so the
+// user can read it alongside the full transcript and articulation review.
+function DebriefPanel({ session, notes, setNotes, onSaveNotes, program }) {
   const isCompletion = session.assessment === 'completion';
   const scored = Object.entries(session.scores || {}).filter(([, v]) => v != null);
   const best = scored.slice().sort((a, b) => b[1] - a[1])[0];
   const worst = scored.slice().sort((a, b) => a[1] - b[1])[0];
   const bestAttr = best && ATTRIBUTE_MAP[best[0]];
   const worstAttr = worst && ATTRIBUTE_MAP[worst[0]];
-
-  const hasNext = program && program.nextPendingIdx >= 0;
   const programComplete = program && program.nextPendingIdx < 0;
 
-  const footer = program ? (
-    <>
-      <button className="btn ghost" onClick={onToProgram}>Back to program</button>
-      {hasNext ? (
-        <button className="btn primary" onClick={onNext}>Save &amp; next step →</button>
-      ) : (
-        <button className="btn primary" onClick={onToProgram}>Finish program 🎉</button>
-      )}
-    </>
-  ) : (
-    <>
-      <button className="btn ghost" onClick={onAgain}>Practice again</button>
-      <button className="btn primary" onClick={onClose}>Save &amp; close</button>
-    </>
-  );
-
   return (
-    <Modal title="Session debrief" onClose={onClose} footer={footer}>
+    <div className="card">
       {program && (
         <div style={{ marginBottom: 16 }}>
           <div className="row spread" style={{ marginBottom: 6 }}>
@@ -468,19 +449,19 @@ function DebriefModal({ session, notes, setNotes, program, onClose, onAgain, onN
         </div>
       )}
       {isCompletion ? (
-        <div style={{ marginBottom: 16 }}>
+        <div>
           <p style={{ marginBottom: 10 }}>
             {session.completion?.completed ? '✅' : '⚠️'} <b>{session.completion?.completed ? 'Warm-up complete.' : 'Warm-up not quite complete.'}</b> {session.completion?.note}
           </p>
-          <div className="grid cols-2">
+          <div className="grid cols-2" style={{ marginBottom: 14 }}>
             <div className="stat"><span className="big">{formatDuration(session.metrics?.durationSec)}</span><span className="lbl">Length</span></div>
             <div className="stat"><span className="big">{Math.round((session.completion?.soundRatio || 0) * 100)}%</span><span className="lbl">Sound detected</span></div>
           </div>
-          <p className="tiny muted" style={{ marginTop: 10 }}>Warm-ups are tracked for completion, not scored.</p>
+          <p className="tiny muted" style={{ marginBottom: 14 }}>Warm-ups are tracked for completion, not scored.</p>
         </div>
       ) : (
         <>
-          <div className="grid cols-3" style={{ marginBottom: 18 }}>
+          <div className="grid cols-3" style={{ marginBottom: 16 }}>
             <div className="stat"><span className="big">{session.overall}</span><span className="lbl">Overall</span></div>
             <div className="stat"><span className="big" style={{ color: 'var(--accent-2)' }}>{session.distances?.alignment}%</span><span className="lbl">Alignment</span></div>
             <div className="stat"><span className="big">{formatDuration(session.metrics?.durationSec)}</span><span className="lbl">Length</span></div>
@@ -499,8 +480,46 @@ function DebriefModal({ session, notes, setNotes, program, onClose, onAgain, onN
       )}
       <label className="field">
         One note for next time (saved with this session)
-        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. Pauses felt more natural; still rushing the ending." />
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          onBlur={onSaveNotes}
+          placeholder="e.g. Pauses felt more natural; still rushing the ending."
+        />
       </label>
-    </Modal>
+    </div>
+  );
+}
+
+// Bottom-of-page "what next?" bar so the retry/continue decision comes after the
+// user has scrolled through the transcript and articulation review.
+function DecisionBar({ program, isTechnique, onAgain, onNext, onToProgram, onDone }) {
+  const hasNext = program && program.nextPendingIdx >= 0;
+  return (
+    <div className="card" style={{ borderColor: 'var(--accent)' }}>
+      <div className="row spread wrap" style={{ gap: 12 }}>
+        <div>
+          <h3 style={{ margin: 0 }}>What next?</h3>
+          <span className="tiny muted">This session{isTechnique ? '' : ' and your note'} {isTechnique ? 'is' : 'are'} already saved.</span>
+        </div>
+        <div className="row wrap">
+          {program ? (
+            <>
+              <button className="btn" onClick={onToProgram}>Back to program</button>
+              {hasNext ? (
+                <button className="btn primary" onClick={onNext}>Next step →</button>
+              ) : (
+                <button className="btn primary" onClick={onToProgram}>Finish 🎉</button>
+              )}
+            </>
+          ) : (
+            <>
+              <button className="btn" onClick={onAgain}>↻ Practice again</button>
+              <button className="btn primary" onClick={onDone}>{isTechnique ? 'Back to mastery' : 'Done'}</button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

@@ -103,7 +103,7 @@ export default function History({ navigate }) {
             {filtered.map((s) => (
               <Fragment key={s.id}>
                 <tr>
-                  <td className="nowrap small">{formatDateTime(s.createdAt)}{s.seed && <div className="tiny muted">sample data</div>}</td>
+                  <td className="nowrap small">{formatDateTime(s.createdAt)}</td>
                   <td>{s.exerciseTitle || '—'}{s.notes && <div className="tiny muted" style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>📝 {s.notes}</div>}</td>
                   <td><span className="badge">{s.mode}</span></td>
                   <td>{s.assessment === 'completion' ? <span className={`badge ${s.completion?.completed ? 'good' : 'fair'}`}>{s.completion?.completed ? '✓ done' : 'partial'}</span> : <ScoreBadge score={s.overall} />}</td>

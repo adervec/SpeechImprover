@@ -166,7 +166,7 @@ export default function Help({ navigate }) {
           <li><b>Local only</b> — sessions and audio live in this browser (IndexedDB); your profile and settings in local storage. Nothing is uploaded.</li>
           <li><b>Export / import</b> JSON from Settings, optionally including audio, to back up or move devices.</li>
           <li><b>Purge audio</b> — drop just the bulky recordings while keeping every score and trend (per session, or all at once).</li>
-          <li><b>Delete / reset</b> — remove individual sessions, clear the pre-loaded sample data, or wipe everything. Export first.</li>
+          <li><b>Delete / reset</b> — remove individual sessions or wipe everything. Only your own recordings are ever stored — there is no sample data. Export first.</li>
         </ul>
       </Section>
 

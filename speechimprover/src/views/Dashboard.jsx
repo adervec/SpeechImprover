@@ -116,7 +116,7 @@ export default function Dashboard({ navigate }) {
           <tbody>
             {sessions.slice(0, 6).map((s) => (
               <tr key={s.id}>
-                <td className="nowrap">{relativeDay(s.createdAt)}{s.seed && <span className="tiny muted"> · sample</span>}</td>
+                <td className="nowrap">{relativeDay(s.createdAt)}</td>
                 <td>{s.exerciseTitle || s.mode}</td>
                 <td><span className="badge">{s.mode}</span></td>
                 <td>{s.assessment === 'completion' ? <span className={`badge ${s.completion?.completed ? 'good' : 'fair'}`}>{s.completion?.completed ? '✓ done' : 'partial'}</span> : <ScoreBadge score={s.overall} />}</td>

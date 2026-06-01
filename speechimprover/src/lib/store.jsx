@@ -1,5 +1,6 @@
 // App-wide state: sessions (IndexedDB), profile + settings (localStorage).
-// Seeds historical sample sessions on first run.
+// The record only ever contains the user's own recordings — there is no sample
+// or seed data, and any left over from older versions is purged on load.
 /* eslint-disable react-refresh/only-export-components -- context provider + its hook. */
 
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
@@ -14,7 +15,6 @@ import {
   clearAll,
 } from './db.js';
 import { rescore } from './analysis/index.js';
-import { buildSeedSessions } from './sampleData.js';
 import { uid } from './format.js';
 
 const PROFILE_KEY = 'si.profile';
@@ -37,7 +37,6 @@ const DEFAULT_SETTINGS = {
   inputDeviceId: '',
   outputDeviceId: '',
   recognitionEnabled: true,
-  seededOnce: false,
 };
 
 function loadLocal(key, fallback) {
@@ -78,17 +77,20 @@ export function StoreProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [storageError, setStorageError] = useState(null);
 
-  // Initial load (+ seed on first run).
+  // Initial load. One-time cleanup: purge any sample/seed sessions left over
+  // from older versions so the record only ever holds the user's own recordings.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         let rows = await getAllSessions();
-        if (!settings.seededOnce && rows.length === 0) {
-          const seeds = buildSeedSessions(profile);
-          for (const s of seeds) await putSession(s);
-          rows = await getAllSessions();
-          persistSettings({ ...settings, seededOnce: true });
+        const seeds = rows.filter((s) => s.seed);
+        if (seeds.length) {
+          for (const s of seeds) {
+            if (s.audioId) await deleteAudio(s.audioId);
+            await dbDeleteSession(s.id);
+          }
+          rows = rows.filter((s) => !s.seed);
         }
         if (!cancelled) setSessions(rows);
       } catch (e) {
@@ -100,8 +102,6 @@ export function StoreProvider({ children }) {
     return () => {
       cancelled = true;
     };
-    // Intentionally run once on mount; profile/settings are read as initial values.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function persistProfile(next) {
@@ -213,7 +213,6 @@ export function StoreProvider({ children }) {
       audioId: null,
       audioMime: null,
       audioBytes: 0,
-      seed: false,
       ...session,
     };
     if (blob) {
@@ -269,21 +268,11 @@ export function StoreProvider({ children }) {
     setSessions((prev) => prev.map((x) => (x.audioId ? { ...x, audioId: null, audioBytes: 0 } : x)));
   }, [sessions]);
 
-  const clearSeedData = useCallback(async () => {
-    const seeds = sessions.filter((s) => s.seed);
-    for (const s of seeds) {
-      if (s.audioId) await deleteAudio(s.audioId);
-      await dbDeleteSession(s.id);
-    }
-    setSessions((prev) => prev.filter((x) => !x.seed));
-  }, [sessions]);
-
   const resetAllData = useCallback(async () => {
     await clearAll();
     setSessions([]);
     persistProgram(null);
-    persistSettings({ ...settings, seededOnce: true });
-  }, [settings]);
+  }, []);
 
   // Recompute scores for all sessions (e.g. after a profile change that affects
   // reference-relative attributes like resonant depth).
@@ -334,7 +323,6 @@ export function StoreProvider({ children }) {
       removeSession,
       purgeAudio,
       purgeAllAudio,
-      clearSeedData,
       resetAllData,
       rescoreAll,
       refresh,
@@ -344,7 +332,7 @@ export function StoreProvider({ children }) {
       loading, storageError, sessions, profile, settings, program, masteryProgress,
       updateProfile, updateSettings, startProgram, completeProgramStep, clearProgram,
       recordTechniqueResult, resetMastery, addSession,
-      updateSession, removeSession, purgeAudio, purgeAllAudio, clearSeedData,
+      updateSession, removeSession, purgeAudio, purgeAllAudio,
       resetAllData, rescoreAll, refresh, getAudioBlob,
     ]
   );

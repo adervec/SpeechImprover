@@ -37,7 +37,7 @@ export default function SessionDetail({ route, navigate }) {
     <div className="stack">
       <div className="row spread wrap">
         <div>
-          <div className="tag">{formatDateTime(session.createdAt)}{session.seed && ' · sample data'}</div>
+          <div className="tag">{formatDateTime(session.createdAt)}</div>
           <h1>{session.exerciseTitle || session.mode}</h1>
         </div>
         <div className="row wrap">

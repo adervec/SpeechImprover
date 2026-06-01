@@ -36,6 +36,7 @@ const GENRES = {
   nonfiction: 'Essays & non-fiction',
   philosophy: 'Philosophy & ideas',
   oratory: 'Speeches & rhetoric',
+  poetry: 'Poetry & verse',
 };
 
 const CATALOG = [
@@ -118,6 +119,52 @@ const CATALOG = [
   { id: 147, title: 'Common Sense', author: 'Thomas Paine', genre: 'oratory' },
   { id: 1404, title: 'The Federalist Papers', author: 'Hamilton, Madison & Jay', genre: 'oratory' },
   { id: 815, title: 'The Autobiography of Theodore Roosevelt', author: 'Theodore Roosevelt', genre: 'oratory' },
+
+  // === additional prose (verified ids) ===
+  // literary fiction
+  { id: 64317, title: 'The Great Gatsby', author: 'F. Scott Fitzgerald', genre: 'literary' },
+  { id: 33, title: 'The Scarlet Letter', author: 'Nathaniel Hawthorne', genre: 'literary' },
+  { id: 219, title: 'Heart of Darkness', author: 'Joseph Conrad', genre: 'literary' },
+  { id: 2814, title: 'Dubliners', author: 'James Joyce', genre: 'literary' },
+  { id: 4217, title: 'A Portrait of the Artist as a Young Man', author: 'James Joyce', genre: 'literary' },
+  // adventure
+  { id: 521, title: 'Robinson Crusoe', author: 'Daniel Defoe', genre: 'adventure' },
+  { id: 83, title: 'From the Earth to the Moon', author: 'Jules Verne', genre: 'adventure' },
+  { id: 18857, title: 'A Journey to the Centre of the Earth', author: 'Jules Verne', genre: 'adventure' },
+  { id: 2166, title: "King Solomon's Mines", author: 'H. Rider Haggard', genre: 'adventure' },
+  // mystery & detective
+  { id: 863, title: 'The Mysterious Affair at Styles', author: 'Agatha Christie', genre: 'mystery' },
+  { id: 2097, title: 'The Sign of the Four', author: 'Arthur Conan Doyle', genre: 'mystery' },
+  { id: 834, title: 'The Memoirs of Sherlock Holmes', author: 'Arthur Conan Doyle', genre: 'mystery' },
+  { id: 108, title: 'The Return of Sherlock Holmes', author: 'Arthur Conan Doyle', genre: 'mystery' },
+  // science fiction & gothic
+  { id: 159, title: 'The Island of Doctor Moreau', author: 'H. G. Wells', genre: 'scifi' },
+  { id: 209, title: 'The Turn of the Screw', author: 'Henry James', genre: 'scifi' },
+  { id: 41, title: 'The Legend of Sleepy Hollow', author: 'Washington Irving', genre: 'scifi' },
+  // essays & non-fiction
+  { id: 23, title: 'Narrative of the Life of Frederick Douglass', author: 'Frederick Douglass', genre: 'nonfiction' },
+  { id: 2376, title: 'Up from Slavery', author: 'Booker T. Washington', genre: 'nonfiction' },
+  { id: 3300, title: 'The Wealth of Nations', author: 'Adam Smith', genre: 'nonfiction' },
+  // philosophy & ideas
+  { id: 34901, title: 'On Liberty', author: 'John Stuart Mill', genre: 'philosophy' },
+  { id: 5827, title: 'The Problems of Philosophy', author: 'Bertrand Russell', genre: 'philosophy' },
+
+  // === poetry & verse (post-Shakespeare, verified ids) ===
+  { id: 1322, title: 'Leaves of Grass', author: 'Walt Whitman', genre: 'poetry', poetry: true },
+  { id: 1280, title: 'Spoon River Anthology', author: 'Edgar Lee Masters', genre: 'poetry', poetry: true },
+  { id: 19, title: 'The Song of Hiawatha', author: 'Henry Wadsworth Longfellow', genre: 'poetry', poetry: true },
+  { id: 1934, title: 'Songs of Innocence and of Experience', author: 'William Blake', genre: 'poetry', poetry: true },
+  { id: 574, title: 'Poems of William Blake', author: 'William Blake', genre: 'poetry', poetry: true },
+  { id: 12242, title: 'Poems', author: 'Emily Dickinson', genre: 'poetry', poetry: true },
+  { id: 10031, title: 'The Complete Poetical Works', author: 'Edgar Allan Poe', genre: 'poetry', poetry: true },
+  { id: 23684, title: 'Poems Published in 1820', author: 'John Keats', genre: 'poetry', poetry: true },
+  { id: 9622, title: 'Lyrical Ballads', author: 'Wordsworth & Coleridge', genre: 'poetry', poetry: true },
+  { id: 9601, title: 'Poetical Works', author: 'Alexander Pope', genre: 'poetry', poetry: true },
+  { id: 610, title: 'Idylls of the King', author: 'Alfred, Lord Tennyson', genre: 'poetry', poetry: true },
+  { id: 3026, title: 'North of Boston', author: 'Robert Frost', genre: 'poetry', poetry: true },
+  { id: 3021, title: "A Boy's Will", author: 'Robert Frost', genre: 'poetry', poetry: true },
+  { id: 4800, title: 'The Complete Poetical Works', author: 'Percy Bysshe Shelley', genre: 'poetry', poetry: true },
+  { id: 16341, title: 'Poems', author: 'William Cullen Bryant', genre: 'poetry', poetry: true },
 ];
 
 // A small hand-curated set of canonical public-domain oratory. These are short
@@ -161,9 +208,16 @@ const MIN_WORDS = 45;
 const MAX_WORDS = 110;
 const MIN_SENTENCES = 2;
 const MAX_SENTENCES = 6;
-const PER_BOOK = 6; // candidates kept per book, spread across the text
-const PER_GENRE = 48; // cap per genre, filled round-robin across that genre's books
-const GLOBAL_CAP = 400; // overall safety ceiling
+const PER_BOOK = 7; // prose candidates kept per book, spread across the text
+const PER_BOOK_POETRY = 6; // verse stanzas kept per poetry book
+const PER_GENRE = 60; // cap per genre, filled round-robin across that genre's books
+const GLOBAL_CAP = 800; // overall safety ceiling
+
+// Poetry-specific sizing (stanzas are shorter than prose paragraphs).
+const POETRY_MIN_WORDS = 18;
+const POETRY_MAX_WORDS = 95;
+const POETRY_MIN_LINES = 2;
+const POETRY_MAX_LINES = 9;
 
 // Words that, if they open a paragraph, signal it depends on earlier context.
 const LEADING_STOPWORDS = new Set([
@@ -173,16 +227,23 @@ const LEADING_STOPWORDS = new Set([
   'it', 'him', 'her', 'them', 'his', 'their', 'its',
 ]);
 
-// Skip any passage containing a slur or other clearly inappropriate term —
-// users read these aloud. Better to over-filter than surface something ugly.
-const BLOCKLIST = [
+// Skip any passage containing an offensive term — users read these aloud, so we
+// over-filter rather than surface something ugly. Hard slurs are blocked
+// everywhere; the "mild" set (profanity + religious/era words) is blocked in
+// prose but allowed in classic poetry, where "God"/"Lord" etc. are pervasive and
+// blocking them would gut Blake, Whitman, Dickinson and the hymn-like verse.
+const HARD_SLURS = [
   'nigger', 'nigga', 'niggers', 'negroes', 'negro', 'darkies', 'darky', 'darkie',
-  'savages', 'savage', 'injun', 'injuns', 'redskin', 'redskins', 'half-breed',
-  'kike', 'chink', 'chinaman', 'chinamen', 'coolie', 'coolies', 'gypsy', 'gypsies',
-  'wop', 'dago', 'spic', 'cripple', 'idiot', 'imbecile', 'whore', 'whores',
-  'bastard', 'bastards', 'damn', 'damned', 'hell', 'god', 'lord', 'christ',
+  'injun', 'injuns', 'redskin', 'redskins', 'half-breed', 'kike', 'chink',
+  'chinaman', 'chinamen', 'coolie', 'coolies', 'wop', 'dago', 'spic',
 ];
-const BLOCK_RE = new RegExp(`\\b(${BLOCKLIST.join('|')})\\b`, 'i');
+const MILD_BLOCK = [
+  'savages', 'savage', 'cripple', 'idiot', 'imbecile', 'whore', 'whores',
+  'bastard', 'bastards', 'damn', 'damned', 'hell', 'god', 'lord', 'christ',
+  'gypsy', 'gypsies',
+];
+const BLOCK_RE = new RegExp(`\\b(${[...HARD_SLURS, ...MILD_BLOCK].join('|')})\\b`, 'i');
+const POETRY_BLOCK_RE = new RegExp(`\\b(${HARD_SLURS.join('|')})\\b`, 'i');
 
 // Characters allowed in a clean read-aloud passage (after normalization).
 const ALLOWED_RE = /^[\p{L} \n.,;:!?'"()—–-]+$/u;
@@ -328,6 +389,75 @@ function extractPassages(book, raw) {
   }));
 }
 
+// --- poetry path: keep verse line breaks, accept short lines, relax sentence
+// rules. Stanzas are split on blank lines; headings / section numbers dropped. ---
+function normalizePoetry(block) {
+  return block
+    .replace(/[‘’‚‛]/g, "'")
+    .replace(/[“”„‟]/g, '"')
+    .replace(/\s*--\s*/g, '—')
+    .replace(/ /g, ' ')
+    .split('\n')
+    .map((l) => l.replace(/[ \t]+/g, ' ').trim())
+    .filter((l) => l && !/^[IVXLCDM]+\.?$/i.test(l) && !/^(canto|book|part|stanza|chapter|section|scene|act)\b/i.test(l))
+    .join('\n')
+    .trim();
+}
+
+function acceptablePoetry(text) {
+  if (!ALLOWED_RE.test(text)) return false; // ALLOWED_RE permits newlines
+  if (/\d/.test(text)) return false;
+  if (POETRY_BLOCK_RE.test(text)) return false;
+  const lines = text.split('\n');
+  if (lines.length < POETRY_MIN_LINES || lines.length > POETRY_MAX_LINES) return false;
+  // reject heading-like all-caps lines (poem titles, "THE TYGER")
+  for (const l of lines) {
+    if (l.replace(/[^A-Za-z]/g, '').length >= 3 && l === l.toUpperCase()) return false;
+  }
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length < POETRY_MIN_WORDS || words.length > POETRY_MAX_WORDS) return false;
+  // average line length keeps us in verse territory (not a prose paragraph)
+  if (text.length / lines.length > 72) return false;
+  if ((text.match(/"/g) || []).length >= 4) return false;
+  if (!/[a-z]/.test(text)) return false; // not a title block
+  if (!/^[A-Za-z"']/.test(text)) return false;
+  return true;
+}
+
+function extractPoetry(book, raw) {
+  const text = stripBoilerplate(raw);
+  const blocks = text.split(/\n\s*\n/);
+  const seen = new Set();
+  const candidates = [];
+  for (const block of blocks) {
+    const cleaned = normalizePoetry(block);
+    if (!cleaned) continue;
+    if (!acceptablePoetry(cleaned)) continue;
+    const key = cleaned.slice(0, 60).toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    candidates.push(cleaned);
+  }
+  const lo = Math.floor(candidates.length * 0.06);
+  const hi = Math.ceil(candidates.length * 0.96);
+  const body = candidates.slice(lo, hi);
+  const picks = [];
+  if (body.length) {
+    const step = Math.max(1, Math.floor(body.length / PER_BOOK_POETRY));
+    for (let i = 0; i < body.length && picks.length < PER_BOOK_POETRY; i += step) {
+      picks.push(body[i]);
+    }
+  }
+  return picks.map((t, i) => ({
+    id: `gb-${book.id}-${i + 1}`,
+    title: `${book.title} — ${book.author}`,
+    text: t,
+    genre: book.genre,
+    author: book.author,
+    source: book.title,
+  }));
+}
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
@@ -349,7 +479,7 @@ async function main() {
       console.log('unreachable, skipped');
       continue;
     }
-    const passages = extractPassages(book, raw);
+    const passages = book.poetry ? extractPoetry(book, raw) : extractPassages(book, raw);
     (byGenre[book.genre] ||= []).push(passages);
     console.log(`${passages.length} candidates`);
   }

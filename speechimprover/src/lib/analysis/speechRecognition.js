@@ -1,59 +1,55 @@
 // Thin wrapper around the Web Speech API (English). Gracefully reports when the
 // browser does not support it (e.g. Firefox) so the UI can offer a manual path.
+//
+// The recognizer emits *final segments* and *interim text* separately and
+// reports end/error events. The caller (recorderContext) accumulates the final
+// transcript and restarts the recognizer when the engine ends spontaneously —
+// Chrome stops a "continuous" recognition after a pause, which otherwise leaves
+// the live transcript frozen or empty for the rest of the take.
 
 export function isRecognitionSupported() {
   return (
     typeof window !== 'undefined' &&
-    (window.SpeechRecognition || window.webkitSpeechRecognition)
+    !!(window.SpeechRecognition || window.webkitSpeechRecognition)
   );
 }
 
-export function createRecognizer({ onResult, onError } = {}) {
-  const Impl = window.SpeechRecognition || window.webkitSpeechRecognition;
+export function createRecognizer({ onFinal, onInterim, onError, onEnd } = {}) {
+  const Impl =
+    typeof window !== 'undefined' &&
+    (window.SpeechRecognition || window.webkitSpeechRecognition);
   if (!Impl) return null;
 
   const recog = new Impl();
   recog.lang = 'en-US';
   recog.continuous = true;
   recog.interimResults = true;
-
-  let finalText = '';
-  let confidenceSum = 0;
-  let confidenceCount = 0;
+  recog.maxAlternatives = 1;
 
   recog.onresult = (event) => {
     let interim = '';
     for (let i = event.resultIndex; i < event.results.length; i += 1) {
       const res = event.results[i];
+      const alt = res[0];
+      if (!alt) continue;
       if (res.isFinal) {
-        finalText += `${res[0].transcript} `;
-        if (res[0].confidence > 0) {
-          confidenceSum += res[0].confidence;
-          confidenceCount += 1;
-        }
+        onFinal?.(alt.transcript || '', alt.confidence || 0);
       } else {
-        interim += res[0].transcript;
+        interim += alt.transcript || '';
       }
     }
-    if (onResult) {
-      onResult({
-        finalText: finalText.trim(),
-        interim,
-        confidence: confidenceCount ? confidenceSum / confidenceCount : 0,
-      });
-    }
+    if (interim) onInterim?.(interim);
   };
 
-  recog.onerror = (e) => {
-    if (onError) onError(e.error || 'recognition-error');
-  };
+  recog.onerror = (e) => onError?.(e.error || 'recognition-error');
+  recog.onend = () => onEnd?.();
 
   return {
     start() {
       try {
         recog.start();
       } catch {
-        /* already started */
+        /* already started — safe to ignore */
       }
     },
     stop() {
@@ -63,11 +59,12 @@ export function createRecognizer({ onResult, onError } = {}) {
         /* not running */
       }
     },
-    getResult() {
-      return {
-        finalText: finalText.trim(),
-        confidence: confidenceCount ? confidenceSum / confidenceCount : 0,
-      };
+    abort() {
+      try {
+        recog.abort();
+      } catch {
+        /* not running */
+      }
     },
   };
 }

@@ -27,6 +27,7 @@ export function RecorderProvider({ children }) {
   const [finalText, setFinalText] = useState('');
   const [interim, setInterim] = useState('');
   const [error, setError] = useState(null);
+  const [recognitionError, setRecognitionError] = useState(null);
 
   const streamRef = useRef(null);
   const audioCtxRef = useRef(null);
@@ -37,6 +38,10 @@ export function RecorderProvider({ children }) {
   const chunksRef = useRef([]);
   const recognizerRef = useRef(null);
   const confidenceRef = useRef(0);
+  const confSumRef = useRef(0);
+  const confCountRef = useRef(0);
+  const manualStopRef = useRef(false);
+  const recognitionFatalRef = useRef(false);
   const finalTextRef = useRef('');
   const startTimeRef = useRef(0);
   const timerRef = useRef(null);
@@ -134,6 +139,55 @@ export function RecorderProvider({ children }) {
     setMode('idle');
   }, [mode, teardownStream]);
 
+  // Create + start a recognizer wired to accumulate final text in refs. Reused
+  // on auto-restart, so the transcript survives Chrome ending recognition on a
+  // pause. Returns the recognizer handle (stored in recognizerRef).
+  const startRecognizer = useCallback(() => {
+    const rec = createRecognizer({
+      onFinal: (segment, confidence) => {
+        const seg = segment.trim();
+        if (seg) {
+          finalTextRef.current = (finalTextRef.current ? `${finalTextRef.current} ${seg}` : seg).trim();
+          setFinalText(finalTextRef.current);
+          setInterim('');
+        }
+        if (confidence > 0) {
+          confSumRef.current += confidence;
+          confCountRef.current += 1;
+          confidenceRef.current = confSumRef.current / confCountRef.current;
+        }
+      },
+      onInterim: (it) => setInterim(it),
+      onError: (err) => {
+        if (err === 'not-allowed' || err === 'service-not-allowed') {
+          recognitionFatalRef.current = true;
+          setRecognitionError('Live transcription was blocked — check microphone permission and that the page is on https or localhost.');
+        } else if (err === 'language-not-supported') {
+          recognitionFatalRef.current = true;
+          setRecognitionError('Live transcription for English is not available in this browser.');
+        } else if (err === 'network') {
+          setRecognitionError('Live transcription needs an internet connection (the browser sends audio to a speech service).');
+        } else if (err !== 'no-speech' && err !== 'aborted') {
+          setRecognitionError(`Transcription issue: ${err}.`);
+        }
+      },
+      onEnd: () => {
+        // Chrome ends a "continuous" recognition after a pause. Restart it while
+        // we are still recording so the live transcript keeps flowing.
+        if (!manualStopRef.current && !recognitionFatalRef.current) {
+          try {
+            recognizerRef.current?.start();
+          } catch {
+            /* ignore */
+          }
+        }
+      },
+    });
+    recognizerRef.current = rec;
+    rec?.start();
+    return rec;
+  }, []);
+
   const startRecording = useCallback(async (deviceId, { recognition = true } = {}) => {
     setError(null);
     try {
@@ -145,8 +199,11 @@ export function RecorderProvider({ children }) {
       chunksRef.current = [];
       finalTextRef.current = '';
       confidenceRef.current = 0;
+      confSumRef.current = 0;
+      confCountRef.current = 0;
       setFinalText('');
       setInterim('');
+      setRecognitionError(null);
 
       const mime = pickMimeType();
       const recorder = new MediaRecorder(
@@ -160,17 +217,9 @@ export function RecorderProvider({ children }) {
       recorderRef.current = recorder;
 
       if (recognition && recognitionSupported) {
-        const recognizer = createRecognizer({
-          onResult: ({ finalText: ft, interim: it, confidence }) => {
-            finalTextRef.current = ft;
-            confidenceRef.current = confidence;
-            setFinalText(ft);
-            setInterim(it);
-          },
-          onError: () => {},
-        });
-        recognizerRef.current = recognizer;
-        recognizer?.start();
+        manualStopRef.current = false;
+        recognitionFatalRef.current = false;
+        startRecognizer();
       }
 
       startTimeRef.current = performance.now();
@@ -184,7 +233,7 @@ export function RecorderProvider({ children }) {
       setError(e.message || String(e));
       setMode('idle');
     }
-  }, [openStream, teardownStream, recognitionSupported]);
+  }, [openStream, teardownStream, recognitionSupported, startRecognizer]);
 
   const stopRecording = useCallback(() => {
     return new Promise((resolve) => {
@@ -194,7 +243,10 @@ export function RecorderProvider({ children }) {
       if (timerRef.current) clearInterval(timerRef.current);
       timerRef.current = null;
 
-      if (recognizerRef.current) recognizerRef.current.stop();
+      if (recognizerRef.current) {
+        manualStopRef.current = true;
+        recognizerRef.current.stop();
+      }
 
       const finish = () => {
         const mime = recorder?.mimeType || 'audio/webm';
@@ -225,6 +277,7 @@ export function RecorderProvider({ children }) {
     finalText,
     interim,
     error,
+    recognitionError,
     recognitionSupported,
     isRecording: mode === 'recording',
     isMonitoring: mode === 'monitoring',
