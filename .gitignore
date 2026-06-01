@@ -1,0 +1,30 @@
+# Repo-root ignores. The Vite app under speechimprover/ has its own .gitignore
+# for node_modules, dist, etc. This file covers root-level / solution artifacts.
+
+# Visual Studio per-user, per-machine state (never commit)
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.wsuo
+
+# .NET build output (in case a project is added at root)
+[Bb]in/
+[Oo]bj/
+
+# Claude Code machine-local settings (launch.json is shared and stays tracked)
+.claude/settings.local.json
+
+# OS junk
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# Logs
+*.log
+
+# Node (defensive — also covered by speechimprover/.gitignore)
+node_modules/
+dist/
