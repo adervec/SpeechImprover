@@ -92,12 +92,12 @@ export default function References({ route }) {
               <b>The Continuous Speech Improvement Guide</b>
               <div className="tiny muted">The reference principles behind this app’s exercises, attributes and target patterns.</div>
             </div>
-            <a className="btn sm" href="/baseline-guide.html" target="_blank" rel="noreferrer">Open in new tab ↗</a>
+            <a className="btn sm" href={`${import.meta.env.BASE_URL}baseline-guide.html`} target="_blank" rel="noreferrer">Open in new tab ↗</a>
           </div>
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             <iframe
               title="The Continuous Speech Improvement Guide"
-              src="/baseline-guide.html"
+              src={`${import.meta.env.BASE_URL}baseline-guide.html`}
               style={{ width: '100%', height: '78vh', border: 'none', background: '#fff' }}
             />
           </div>

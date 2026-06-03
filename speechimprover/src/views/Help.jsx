@@ -54,7 +54,7 @@ export default function Help({ navigate }) {
         </p>
         <div className="row wrap" style={{ marginTop: 14 }}>
           <button className="btn primary" onClick={() => navigate('practice')}>● Start a session</button>
-          <a className="btn" href="/baseline-guide.html" target="_blank" rel="noreferrer">📖 Open the Baseline guide ↗</a>
+          <a className="btn" href={`${import.meta.env.BASE_URL}baseline-guide.html`} target="_blank" rel="noreferrer">📖 Open the Baseline guide ↗</a>
           <button className="btn" onClick={() => navigate('references')}>🎯 Reference patterns</button>
         </div>
       </div>
@@ -203,7 +203,7 @@ export default function Help({ navigate }) {
           Improvement Guide</b>. You can read the original in full at any time.
         </p>
         <div className="row wrap">
-          <a className="btn primary" href="/baseline-guide.html" target="_blank" rel="noreferrer">📖 Open the guide in a new tab ↗</a>
+          <a className="btn primary" href={`${import.meta.env.BASE_URL}baseline-guide.html`} target="_blank" rel="noreferrer">📖 Open the guide in a new tab ↗</a>
           <button className="btn" onClick={() => navigate('references', { query: { tab: 'guide' } })}>View it inside the app</button>
         </div>
       </Section>
