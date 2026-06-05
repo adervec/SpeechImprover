@@ -50,13 +50,23 @@ export default function Help({ navigate }) {
         <h1 style={{ margin: '4px 0 8px' }}>How SpeechImprover works</h1>
         <p className="muted" style={{ maxWidth: 680 }}>
           Record yourself speaking English, get a local analysis of ten speaking attributes, and practice
-          targeted exercises to improve. Everything runs in your browser — your audio never leaves this device.
+          targeted exercises to improve. Your recordings and analysis stay in your browser.
         </p>
         <div className="row wrap" style={{ marginTop: 14 }}>
           <button className="btn primary" onClick={() => navigate('practice')}>● Start a session</button>
           <a className="btn" href={`${import.meta.env.BASE_URL}baseline-guide.html`} target="_blank" rel="noreferrer">📖 Open the Baseline guide ↗</a>
           <button className="btn" onClick={() => navigate('references')}>🎯 Reference patterns</button>
         </div>
+      </div>
+
+      <div className="card tight" style={{ borderColor: 'color-mix(in srgb, var(--warn) 55%, var(--border))', background: 'color-mix(in srgb, var(--warn) 8%, var(--surface))' }}>
+        <b>⚠️ Not professional advice.</b>{' '}
+        <span className="muted small">
+          SpeechImprover is an experimental tool made by a software developer — not a doctor,
+          speech-language pathologist, therapist, or coach, and its analysis is not clinically
+          validated. For any speech, voice, or hearing concern, please consult a qualified professional.{' '}
+          <a href="https://github.com/adervec/SpeechImprover/blob/main/DISCLAIMER.md" target="_blank" rel="noreferrer">Read the full disclaimer ↗</a>
+        </span>
       </div>
 
       <div className="card">
