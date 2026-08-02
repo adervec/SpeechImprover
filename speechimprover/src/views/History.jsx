@@ -18,6 +18,8 @@ export default function History({ navigate }) {
   }, [audioUrls]);
 
   const modes = useMemo(() => [...new Set(sessions.map((s) => s.mode).filter(Boolean))], [sessions]);
+  const audioCount = useMemo(() => sessions.filter((s) => s.audioId).length, [sessions]);
+  const totalAudio = useMemo(() => sessions.reduce((sum, s) => sum + (s.audioBytes || 0), 0), [sessions]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -57,6 +59,19 @@ export default function History({ navigate }) {
     });
   }
 
+  async function downloadAudio(s) {
+    if (!s.audioId) return;
+    const blob = await getAudioBlob(s.audioId);
+    if (!blob) { toast('Audio is no longer available.'); return; }
+    const url = URL.createObjectURL(blob);
+    const ext = (s.audioMime || '').includes('ogg') ? 'ogg' : (s.audioMime || '').includes('webm') ? 'webm' : 'audio';
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `speech-${(s.exerciseTitle || s.mode || 'session').replace(/[^\w-]+/g, '_')}-${s.id}.${ext}`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+
   async function doPurge(s) {
     await purgeAudio(s.id);
     toast('Audio purged — scores kept.');
@@ -82,6 +97,17 @@ export default function History({ navigate }) {
           </div>
         </div>
         <span className="small muted">{filtered.length} of {sessions.length}</span>
+      </div>
+
+      <div className="card tight">
+        <div className="grid cols-3">
+          <div className="stat"><span className="big" style={{ fontSize: '1.3rem' }}>{sessions.length}</span><span className="lbl">Recordings</span></div>
+          <div className="stat"><span className="big" style={{ fontSize: '1.3rem' }}>{audioCount}</span><span className="lbl">With audio</span></div>
+          <div className="stat"><span className="big" style={{ fontSize: '1.3rem' }}>{formatBytes(totalAudio)}</span><span className="lbl">Audio stored</span></div>
+        </div>
+        <p className="tiny muted" style={{ margin: '10px 0 0' }}>
+          Play, download or delete any recording below. Bulk export/import and one-click purge live in <a onClick={() => navigate('settings')} style={{ cursor: 'pointer', color: 'var(--accent)' }}>Settings → Data &amp; storage</a>.
+        </p>
       </div>
 
       {compareSel.length === 2 && (
@@ -112,6 +138,7 @@ export default function History({ navigate }) {
                   <td style={{ textAlign: 'right' }}>
                     <div className="row" style={{ justifyContent: 'flex-end', gap: 4 }}>
                       {s.audioId && <button className="btn ghost sm" onClick={() => togglePlay(s)}>{playingId === s.id ? '❚❚' : '▶'}</button>}
+                      {s.audioId && <button className="btn ghost sm" title="Download audio" onClick={() => downloadAudio(s)}>⬇</button>}
                       <button className="btn ghost sm" onClick={() => navigate('session', { param: s.id })}>Open</button>
                       {s.exerciseId && <button className="btn ghost sm" onClick={() => navigate('practice', { query: { exercise: s.exerciseId } })}>Repeat</button>}
                       <button className={`btn sm ${compareSel.includes(s.id) ? 'primary' : 'ghost'}`} onClick={() => toggleCompare(s.id)}>⇄</button>

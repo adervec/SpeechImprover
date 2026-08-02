@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { useStore } from '../lib/store.jsx';
+import { useDriveSync } from '../lib/driveSync.jsx';
 import { useRecorder } from '../lib/recorderContext.jsx';
 import { useMediaDevices } from '../hooks/useMediaDevices.js';
 import { Modal, useToast } from '../components/ui.jsx';
@@ -124,6 +125,9 @@ export default function Settings() {
         {!recognitionSupported && <p className="tiny" style={{ color: 'var(--warn)', marginTop: 8 }}>⚠️ Not supported in this browser — try Chrome or Edge. Pitch, energy and articulation are still analyzed.</p>}
       </div>
 
+      {/* Cloud sync */}
+      <CloudSync />
+
       {/* Data management */}
       <div className="card">
         <div className="card-head"><h3>Data &amp; storage</h3></div>
@@ -179,6 +183,56 @@ export default function Settings() {
             {confirm === 'all' && 'This permanently deletes all sessions, scores and audio from this device. Consider exporting first.'}
           </p>
         </Modal>
+      )}
+    </div>
+  );
+}
+
+const SYNC_LABEL = { syncing: 'Syncing…', synced: 'Up to date', error: 'Sync error', idle: 'Idle' };
+
+function CloudSync() {
+  const { configured, connected, status, lastSyncedAt, error, connect, disconnect, syncNow } = useDriveSync();
+
+  if (!configured) {
+    return (
+      <div className="card">
+        <div className="card-head"><h3>Cloud sync</h3></div>
+        <p className="tiny muted">
+          Google Drive sync is disabled on this build. To enable it (e.g. on your own fork), set{' '}
+          <code>VITE_GOOGLE_CLIENT_ID</code> to a Google OAuth client ID at build time. Your local JSON
+          export/import below works regardless.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card">
+      <div className="card-head">
+        <h3>Cloud sync</h3>
+        {connected && <span className="tag">{SYNC_LABEL[status] || status}</span>}
+      </div>
+      {!connected ? (
+        <>
+          <p className="small" style={{ marginBottom: 12 }}>
+            Optionally sync your sessions, profile and theme across devices via your own Google Drive.
+            Data lives in a private app folder in <b>your</b> Drive — opt-in, and never on our servers.
+            Audio recordings stay on this device.
+          </p>
+          <button className="btn primary" onClick={connect}>☁ Connect Google Drive</button>
+        </>
+      ) : (
+        <>
+          <p className="small" style={{ marginBottom: 12 }}>
+            {status === 'error'
+              ? <span style={{ color: 'var(--bad)' }}>Couldn’t sync: {error} — try “Sync now”, or reconnect.</span>
+              : <>Last synced {lastSyncedAt ? new Date(lastSyncedAt).toLocaleTimeString() : 'never'}. Changes sync automatically while this tab is open.</>}
+          </p>
+          <div className="row wrap">
+            <button className="btn" onClick={syncNow} disabled={status === 'syncing'}>↻ Sync now</button>
+            <button className="btn ghost" onClick={disconnect}>Disconnect</button>
+          </div>
+        </>
       )}
     </div>
   );

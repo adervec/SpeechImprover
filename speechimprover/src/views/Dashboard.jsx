@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useStore } from '../lib/store.jsx';
 import { LineChart } from '../components/charts.jsx';
+import ActivityGrid from '../components/ActivityGrid.jsx';
 import { ScoreBadge, EmptyState, AttrLabel } from '../components/ui.jsx';
 import {
   computeStreak,
@@ -64,6 +65,13 @@ export default function Dashboard({ navigate }) {
           </span>
           <span className="lbl">Overall trend</span>
         </div>
+      </div>
+
+      <div className="card">
+        <div className="card-head"><h3>Practice activity</h3>
+          <span className="tiny muted">{stats.streak}🔥 day streak · past year</span>
+        </div>
+        <ActivityGrid sessions={sessions} />
       </div>
 
       <div className="grid cols-2">

@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Local env files (the client ID is public, but never commit a real .env)
+.env
+.env.*
+!.env.example
+
 # Scraper raw-text cache (regenerable)
 scripts/.cache
 

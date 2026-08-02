@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="248" height="48" viewBox="0 0 248 48" role="img" aria-label="SpeechImprover">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7c6cff"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+  </defs>
+  <!-- badge mark: rising voice/equalizer bars (matches favicon.svg) -->
+  <rect x="4" y="4" width="40" height="40" rx="10" fill="url(#g)"/>
+  <g fill="#fff" transform="translate(4,4) scale(1.25)">
+    <rect x="4.5"  y="11.5" width="3" height="9"  rx="1.5"/>
+    <rect x="9.5"  y="8.5"  width="3" height="15" rx="1.5"/>
+    <rect x="14.5" y="10.5" width="3" height="11" rx="1.5"/>
+    <rect x="19.5" y="6.5"  width="3" height="19" rx="1.5"/>
+    <rect x="24.5" y="4.5"  width="3" height="23" rx="1.5"/>
+  </g>
+  <text x="58" y="31" font-family="ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif"
+        font-size="21" font-weight="700" letter-spacing="-0.4">
+    <tspan fill="#7c6cff">Speech</tspan><tspan fill="#22d3ee">Improver</tspan>
+  </text>
+</svg>

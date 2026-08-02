@@ -43,6 +43,7 @@ export function RecorderProvider({ children }) {
   const manualStopRef = useRef(false);
   const recognitionFatalRef = useRef(false);
   const finalTextRef = useRef('');
+  const interimRef = useRef(''); // last live interim, so a not-yet-finalized tail isn't lost on stop
   const startTimeRef = useRef(0);
   const timerRef = useRef(null);
   const activeDeviceRef = useRef('');
@@ -149,6 +150,7 @@ export function RecorderProvider({ children }) {
         if (seg) {
           finalTextRef.current = (finalTextRef.current ? `${finalTextRef.current} ${seg}` : seg).trim();
           setFinalText(finalTextRef.current);
+          interimRef.current = '';
           setInterim('');
         }
         if (confidence > 0) {
@@ -157,7 +159,7 @@ export function RecorderProvider({ children }) {
           confidenceRef.current = confSumRef.current / confCountRef.current;
         }
       },
-      onInterim: (it) => setInterim(it),
+      onInterim: (it) => { interimRef.current = it; setInterim(it); },
       onError: (err) => {
         if (err === 'not-allowed' || err === 'service-not-allowed') {
           recognitionFatalRef.current = true;
@@ -198,6 +200,7 @@ export function RecorderProvider({ children }) {
       }
       chunksRef.current = [];
       finalTextRef.current = '';
+      interimRef.current = '';
       confidenceRef.current = 0;
       confSumRef.current = 0;
       confCountRef.current = 0;
@@ -251,13 +254,20 @@ export function RecorderProvider({ children }) {
       const finish = () => {
         const mime = recorder?.mimeType || 'audio/webm';
         const blob = new Blob(chunksRef.current, { type: mime });
-        const transcript = finalTextRef.current.trim();
+        // Include any not-yet-finalized tail: on stop, recognition may not have
+        // flushed the last utterance into finalText even though it was visible live.
+        let transcript = finalTextRef.current.trim();
+        const leftover = interimRef.current.trim();
+        if (leftover && !transcript.toLowerCase().endsWith(leftover.toLowerCase())) {
+          transcript = (transcript ? `${transcript} ${leftover}` : leftover).trim();
+        }
         const confidence = confidenceRef.current;
         recorderRef.current = null;
         chunksRef.current = [];
         teardownStream();
         setMode('idle');
         setInterim('');
+        interimRef.current = '';
         resolve({ blob, mime, durationSec, transcript, confidence });
       };
 

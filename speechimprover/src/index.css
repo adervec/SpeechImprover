@@ -190,6 +190,11 @@ h3 {
   width: 100%;
   margin: 0 auto;
 }
+/* Hamburger + drawer backdrop — only shown on mobile (see media query). */
+.nav-toggle,
+.nav-backdrop {
+  display: none;
+}
 
 /* ---------- device bar + mic meter ---------- */
 .devicebar {
@@ -650,15 +655,45 @@ table.data tr:hover td {
   .app-shell {
     grid-template-columns: 1fr;
   }
-  .sidebar {
-    position: static;
-    height: auto;
-    flex-direction: row;
-    flex-wrap: wrap;
-    overflow-x: auto;
+  /* Sidebar becomes an off-canvas drawer toggled by the topbar hamburger. */
+  .nav-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    font-size: 1.25rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    cursor: pointer;
+    flex: none;
   }
-  .nav-spacer {
-    display: none;
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 60;
+    width: 268px;
+    max-width: 82vw;
+    height: 100dvh;
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+    box-shadow: 0 16px 44px rgba(0, 0, 0, 0.4);
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  .nav-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    border: 0;
+    padding: 0;
+    background: rgba(0, 0, 0, 0.5);
+    cursor: pointer;
   }
   .grid.cols-2,
   .grid.cols-3,

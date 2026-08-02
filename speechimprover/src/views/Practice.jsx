@@ -15,6 +15,7 @@ import {
   INTERVIEW_PROMPTS,
 } from '../lib/exercises.js';
 import { getTechniqueExercise, evaluateStage } from '../lib/vocalMastery.js';
+import { splitIntoPassages } from '../lib/passages.js';
 import { formatDuration } from '../lib/format.js';
 
 const MODE_LABELS = {
@@ -25,28 +26,50 @@ const MODE_LABELS = {
   sustain: 'Sustained tone',
 };
 
-function buildCustomExercise(mode, prompt, passageId) {
+// Target tone/emotion presets for free speaking. Each maps to attributes the
+// analysis engine already scores — a target delivery *style*, scored the normal
+// way (SessionReport focuses on these).
+// ponytail: attribute-emphasis presets, not an ML emotion classifier — add one
+// only if per-emotion detection is actually needed.
+const TONE_TARGETS = [
+  { id: 'natural', emoji: '💬', label: 'Natural / conversational', attrs: ['fillers', 'nonRepetition', 'pace', 'clarity'], hint: 'Relaxed and clear, like talking to a friend.' },
+  { id: 'energetic', emoji: '⚡', label: 'Energetic / excited', attrs: ['expressiveness', 'pace', 'projection'], hint: 'Lively pitch and pace, strong projection.' },
+  { id: 'calm', emoji: '🌿', label: 'Calm / authoritative', attrs: ['resonantDepth', 'noUptalk', 'projection', 'breath'], hint: 'Grounded, unhurried, statements that land.' },
+  { id: 'warm', emoji: '☀️', label: 'Warm / friendly', attrs: ['expressiveness', 'nonNasal', 'noUptalk'], hint: 'Open, approachable, gently varied tone.' },
+  { id: 'persuasive', emoji: '🎯', label: 'Persuasive / confident', attrs: ['projection', 'noUptalk', 'clarity', 'pace'], hint: 'Firm, clear, no uptalk — carry the room.' },
+];
+
+function buildCustomExercise(mode, prompt, passageId, tone) {
+  if (mode === 'free') {
+    const t = tone || TONE_TARGETS[0];
+    return {
+      id: passageId || `custom-free-${t.id}`,
+      title: `Free speaking · ${t.label}`,
+      category: 'Custom',
+      mode: 'free',
+      durationSec: 90,
+      targetAttributes: t.attrs,
+      instructions: `Speak unscripted in a ${t.label.toLowerCase()} style — ${t.hint} Replace fillers with brief pauses.`,
+      prompt,
+      tone: t.id,
+      type: 'free',
+    };
+  }
   return {
     id: passageId || `custom-${mode}`,
-    title: mode === 'read' ? 'Read aloud (custom)' : 'Free speaking',
+    title: 'Read aloud (custom)',
     category: 'Custom',
     mode,
-    durationSec: mode === 'read' ? 60 : 90,
-    targetAttributes:
-      mode === 'read'
-        ? ['pace', 'clarity', 'projection', 'noUptalk']
-        : ['fillers', 'nonRepetition', 'pace', 'expressiveness'],
-    instructions:
-      mode === 'read'
-        ? 'Read the text below at a deliberate, even pace. Pause at punctuation.'
-        : 'Speak unscripted. Replace fillers with brief pauses; let statements fall at the end.',
+    durationSec: 60,
+    targetAttributes: ['pace', 'clarity', 'projection', 'noUptalk'],
+    instructions: 'Read the text below at a deliberate, even pace. Pause at punctuation.',
     prompt,
     type: mode,
   };
 }
 
 export default function Practice({ route, navigate }) {
-  const { profile, settings, addSession, updateSession, program, completeProgramStep, recordTechniqueResult } = useStore();
+  const { profile, settings, addSession, updateSession, program, completeProgramStep, recordTechniqueResult, projects, updateProject } = useStore();
   const recorder = useRecorder();
   const toast = useToast();
 
@@ -74,26 +97,42 @@ export default function Practice({ route, navigate }) {
   const [customText, setCustomText] = useState('');
   const [selectedPassage, setSelectedPassage] = useState(READING_LIBRARY[0].id);
   const [freePrompt, setFreePrompt] = useState(FREE_PROMPTS[0]);
+  const [freeTone, setFreeTone] = useState(TONE_TARGETS[0]);
+  const [customPrompt, setCustomPrompt] = useState('');
+  const [selectedProjectId, setSelectedProjectId] = useState(route.query.project || '');
   const [exercise, setExercise] = useState(queryExercise);
   const [result, setResult] = useState(null); // { session, audioUrl }
+  const [pendingRec, setPendingRec] = useState(null); // finished take awaiting submit/restart/abandon
   const [showModel, setShowModel] = useState(true);
   const [notes, setNotes] = useState('');
   const audioUrlRef = useRef(null);
+  const pendingUrlRef = useRef(null);
 
   // Clean up object URLs.
   useEffect(() => () => {
     if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+    if (pendingUrlRef.current) URL.revokeObjectURL(pendingUrlRef.current);
   }, []);
+
+  // Selected project. A project with `text` is a "reading" project — recorded a
+  // passage at a time, tracking a position through the whole work.
+  const selectedProject = projects.find((p) => p.id === selectedProjectId) || null;
+  const readingProject = selectedProject && selectedProject.text?.trim() ? selectedProject : null;
+  const passages = useMemo(() => (readingProject ? splitIntoPassages(readingProject.text) : []), [readingProject]);
+  const passageIdx = readingProject ? Math.min(readingProject.passageIndex || 0, Math.max(0, passages.length - 1)) : 0;
 
   const activeExercise = useMemo(() => {
     if (exercise) return exercise;
+    if (readingProject && passages.length) {
+      return buildCustomExercise('read', passages[passageIdx], `project-${readingProject.id}-${passageIdx}`);
+    }
     if (chooserMode === 'read') {
       const passage = READING_LIBRARY.find((p) => p.id === selectedPassage);
       const text = customText.trim() || passage?.text || '';
       return buildCustomExercise('read', text, customText.trim() ? null : passage?.id);
     }
-    return buildCustomExercise('free', freePrompt, null);
-  }, [exercise, chooserMode, selectedPassage, customText, freePrompt]);
+    return buildCustomExercise('free', customPrompt.trim() || freePrompt, null, freeTone);
+  }, [exercise, readingProject, passages, passageIdx, chooserMode, selectedPassage, customText, freePrompt, customPrompt, freeTone]);
 
   const recognitionOn = settings.recognitionEnabled && recorder.recognitionSupported;
 
@@ -108,9 +147,20 @@ export default function Practice({ route, navigate }) {
     setPhase('recording');
   }
 
+  // Stop the mic and hold the take for review — no analysis yet.
   async function handleStop() {
-    setPhase('analyzing');
     const rec = await recorder.stopRecording();
+    if (pendingUrlRef.current) URL.revokeObjectURL(pendingUrlRef.current);
+    pendingUrlRef.current = URL.createObjectURL(rec.blob);
+    setPendingRec({ ...rec, previewUrl: pendingUrlRef.current });
+    setPhase('review');
+  }
+
+  // Analyze + save the take the user chose to submit.
+  async function submitRecording() {
+    const rec = pendingRec;
+    if (!rec) return;
+    setPhase('analyzing');
     try {
       const isWarmup = activeExercise.mode === 'breath' || activeExercise.category === 'Warm-up';
       const isTechnique = !!activeExercise.technique;
@@ -134,6 +184,7 @@ export default function Practice({ route, navigate }) {
         recognitionConfidence: rec.confidence,
         recognitionSupported: recorder.recognitionSupported,
         metrics: analysis.metrics,
+        projectId: selectedProjectId || null,
         notes: '',
       };
       let session;
@@ -173,15 +224,40 @@ export default function Practice({ route, navigate }) {
         });
       }
       if (programStepIndex >= 0) completeProgramStep(programStepIndex, saved.id);
-      const audioUrl = URL.createObjectURL(rec.blob);
-      audioUrlRef.current = audioUrl;
-      setResult({ session: saved, audioUrl });
+      // Advance the reading position for a book/work project (only when we read
+      // its current passage, not a URL-provided exercise).
+      if (readingProject && !exercise && passages.length) {
+        updateProject(readingProject.id, { passageIndex: Math.min(passageIdx + 1, passages.length) });
+      }
+      // Reuse the review preview URL (same blob) as the result's audio URL.
+      audioUrlRef.current = rec.previewUrl || URL.createObjectURL(rec.blob);
+      pendingUrlRef.current = null;
+      setPendingRec(null);
+      setResult({ session: saved, audioUrl: audioUrlRef.current });
       setNotes('');
       setPhase('result');
     } catch (e) {
       toast(`Analysis failed: ${e.message || e}`);
-      setPhase('setup');
+      setPhase('review'); // keep the take so they can retry or abandon
     }
+  }
+
+  function discardPending() {
+    if (pendingUrlRef.current) {
+      URL.revokeObjectURL(pendingUrlRef.current);
+      pendingUrlRef.current = null;
+    }
+    setPendingRec(null);
+  }
+
+  async function restartRecording() {
+    discardPending();
+    await handleStart();
+  }
+
+  function abandonRecording() {
+    discardPending();
+    setPhase('setup');
   }
 
   function reset() {
@@ -189,6 +265,7 @@ export default function Practice({ route, navigate }) {
       URL.revokeObjectURL(audioUrlRef.current);
       audioUrlRef.current = null;
     }
+    discardPending();
     setResult(null);
     setExercise(queryExercise);
     setPhase('setup');
@@ -253,6 +330,40 @@ export default function Practice({ route, navigate }) {
     );
   }
 
+  if (phase === 'review' && pendingRec) {
+    return (
+      <div className="stack">
+        <div className="card">
+          <div className="card-head">
+            <h3>Recording finished</h3>
+            <span className="tag">{formatDuration(pendingRec.durationSec)}</span>
+          </div>
+          <p className="muted small" style={{ marginBottom: 12 }}>
+            Review your transcript, then submit it for analysis, re-record, or abandon this take.
+          </p>
+          <div className="card tight" style={{ background: 'var(--bg-2)', marginBottom: 12 }}>
+            <div className="tag" style={{ marginBottom: 6 }}>Transcript</div>
+            <p style={{ minHeight: 40, whiteSpace: 'pre-wrap' }}>
+              {pendingRec.transcript || (
+                <span className="muted">
+                  {recognitionOn
+                    ? 'No speech was transcribed. Nothing is analyzed yet — pitch, energy & articulation get scored when you press Submit.'
+                    : 'Transcription is off. Nothing is analyzed yet — pitch, energy & articulation get scored when you press Submit.'}
+                </span>
+              )}
+            </p>
+          </div>
+          {pendingRec.previewUrl && <audio src={pendingRec.previewUrl} controls style={{ width: '100%' }} />}
+          <div className="row wrap" style={{ marginTop: 16 }}>
+            <button className="btn primary lg" onClick={submitRecording}>✓ Submit for analysis</button>
+            <button className="btn lg" onClick={restartRecording}>↻ Restart</button>
+            <button className="btn ghost danger lg" onClick={abandonRecording}>✕ Abandon</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (phase === 'analyzing') {
     return <div className="empty"><div style={{ fontSize: 40 }}>🧠</div><h3>Analyzing your speech…</h3><p className="muted">Decoding audio, measuring pitch, energy and articulation.</p></div>;
   }
@@ -298,6 +409,29 @@ export default function Practice({ route, navigate }) {
             </div>
           ) : (
             <>
+              {projects.length > 0 && (
+                <label className="field" style={{ marginBottom: 14 }}>
+                  Project (optional — e.g. reading a book)
+                  <select value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)}>
+                    <option value="">None — one-off recording</option>
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>{p.text?.trim() ? '📖 ' : '📁 '}{p.name}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              {readingProject ? (
+                <div className="card tight" style={{ borderColor: 'var(--accent)' }}>
+                  <div className="row spread">
+                    <span className="small"><b>📖 {readingProject.name}</b></span>
+                    <span className="tiny mono">passage {Math.min(passageIdx + 1, passages.length)} of {passages.length}</span>
+                  </div>
+                  <p className="tiny muted" style={{ margin: '6px 0 0' }}>
+                    Reading the next passage of this project. Your position advances when you submit; change it on the project page.
+                  </p>
+                </div>
+              ) : (
+              <>
               <div className="pill-group" style={{ marginBottom: 14 }}>
                 {['free', 'read'].map((m) => (
                   <button key={m} className={`pill ${chooserMode === m ? 'active' : ''}`} onClick={() => setChooserMode(m)}>
@@ -332,8 +466,19 @@ export default function Practice({ route, navigate }) {
                 </div>
               ) : (
                 <div className="stack">
+                  <div className="field">
+                    Target tone / emotion
+                    <div className="pill-group" style={{ flexWrap: 'wrap' }}>
+                      {TONE_TARGETS.map((t) => (
+                        <button key={t.id} className={`pill ${freeTone.id === t.id ? 'active' : ''}`} onClick={() => setFreeTone(t)}>
+                          {t.emoji} {t.label}
+                        </button>
+                      ))}
+                    </div>
+                    <span className="tiny muted">{freeTone.hint} — you're scored on: {freeTone.attrs.join(', ')}.</span>
+                  </div>
                   <label className="field">
-                    Prompt (improv / topic)
+                    Prompt — pick a topic…
                     <select value={freePrompt} onChange={(e) => setFreePrompt(e.target.value)}>
                       <optgroup label="Free / improv">
                         {FREE_PROMPTS.map((p) => <option key={p} value={p}>{p}</option>)}
@@ -347,7 +492,13 @@ export default function Practice({ route, navigate }) {
                     onClick={() => setFreePrompt(FREE_PROMPTS[Math.floor(Math.random() * FREE_PROMPTS.length)])}>
                     🎲 Shuffle prompt
                   </button>
+                  <label className="field">
+                    …or make something up — type your own prompt / topic (overrides the picker)
+                    <textarea value={customPrompt} onChange={(e) => setCustomPrompt(e.target.value)} placeholder="e.g. Pitch your favourite hobby to a stranger in 60 seconds." />
+                  </label>
                 </div>
+              )}
+              </>
               )}
             </>
           )}

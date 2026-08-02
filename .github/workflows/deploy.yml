@@ -41,6 +41,9 @@ jobs:
         run: npm run build
         env:
           GITHUB_PAGES: "true"
+          # Optional: set this repo secret to enable Google Drive sync on the
+          # deployed site. Leave unset to ship the app fully offline.
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

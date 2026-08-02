@@ -10,24 +10,33 @@ const NAV = [
   { id: '', label: 'Dashboard', icon: '◎' },
   { id: 'practice', label: 'Practice', icon: '●' },
   { id: 'exercises', label: 'Exercises', icon: '✦' },
+  { id: 'projects', label: 'Projects', icon: '📁' },
   { id: 'mastery', label: 'Vocal mastery', icon: '🏆' },
   { id: 'voicelab', label: 'Voice lab', icon: '🗣️' },
   { id: 'trends', label: 'Trends', icon: '📈' },
-  { id: 'history', label: 'History', icon: '🕘' },
+  { id: 'history', label: 'Recordings', icon: '🕘' },
+  { id: 'coach', label: 'AI coach', icon: '🤝' },
   { id: 'references', label: 'References', icon: '🎯' },
   { id: 'profile', label: 'Profile', icon: '👤' },
   { id: 'settings', label: 'Settings', icon: '⚙️' },
   { id: 'help', label: 'Help & guide', icon: '❔' },
 ];
 
-export function Sidebar({ route, navigate }) {
+export function Sidebar({ route, navigate, open, onClose }) {
+  const go = (id) => { navigate(id); onClose?.(); };
   return (
-    <nav className="sidebar">
+    <>
+      {open && <button className="nav-backdrop" aria-label="Close menu" onClick={onClose} />}
+      <nav className={`sidebar ${open ? 'open' : ''}`}>
       <div className="brand">
         <div className="brand-logo">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round">
-            <path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" fill="#fff" stroke="none" />
-            <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+          {/* matches favicon.svg: rising voice/equalizer bars */}
+          <svg width="20" height="20" viewBox="0 0 32 32" fill="#fff" aria-hidden="true">
+            <rect x="4.5" y="11.5" width="3" height="9" rx="1.5" />
+            <rect x="9.5" y="8.5" width="3" height="15" rx="1.5" />
+            <rect x="14.5" y="10.5" width="3" height="11" rx="1.5" />
+            <rect x="19.5" y="6.5" width="3" height="19" rx="1.5" />
+            <rect x="24.5" y="4.5" width="3" height="23" rx="1.5" />
           </svg>
         </div>
         <div>
@@ -39,17 +48,18 @@ export function Sidebar({ route, navigate }) {
         <a
           key={n.id}
           className={`nav-link ${route.page === n.id ? 'active' : ''}`}
-          onClick={() => navigate(n.id)}
+          onClick={() => go(n.id)}
         >
           <span className="ico">{n.icon}</span>
           {n.label}
         </a>
       ))}
       <div className="nav-spacer" />
-      <a className="nav-link primary-cta" onClick={() => navigate('practice')} style={{ color: 'var(--accent)' }}>
+      <a className="nav-link primary-cta" onClick={() => go('practice')} style={{ color: 'var(--accent)' }}>
         <span className="ico">＋</span>New session
       </a>
-    </nav>
+      </nav>
+    </>
   );
 }
 

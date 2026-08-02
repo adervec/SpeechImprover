@@ -1,0 +1,16 @@
+{
+  "name": "SpeechImprover",
+  "short_name": "SpeechImprover",
+  "description": "Assess your English speech and practice targeted exercises to improve it — fully local and private.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0b0b12",
+  "theme_color": "#7c6cff",
+  "icons": [
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" },
+    { "src": "logo.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

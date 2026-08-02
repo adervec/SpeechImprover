@@ -21,10 +21,11 @@ const PROFILE_KEY = 'si.profile';
 const SETTINGS_KEY = 'si.settings';
 const PROGRAM_KEY = 'si.program';
 const MASTERY_KEY = 'si.mastery';
+const PROJECTS_KEY = 'si.projects';
 
 const DEFAULT_PROFILE = {
   name: '',
-  age: '',
+  dob: '',
   gender: '',
   nativeLanguage: 'English',
   countryOfBirth: '',
@@ -66,6 +67,23 @@ function loadMastery() {
   }
 }
 
+function loadProjects() {
+  try {
+    const raw = localStorage.getItem(PROJECTS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveProjects(list) {
+  try {
+    localStorage.setItem(PROJECTS_KEY, JSON.stringify(list));
+  } catch {
+    /* quota / private mode */
+  }
+}
+
 const StoreContext = createContext(null);
 
 export function StoreProvider({ children }) {
@@ -74,6 +92,7 @@ export function StoreProvider({ children }) {
   const [settings, setSettings] = useState(() => loadLocal(SETTINGS_KEY, DEFAULT_SETTINGS));
   const [program, setProgram] = useState(loadProgram);
   const [masteryProgress, setMasteryProgress] = useState(loadMastery);
+  const [projects, setProjects] = useState(loadProjects);
   const [loading, setLoading] = useState(true);
   const [storageError, setStorageError] = useState(null);
 
@@ -108,6 +127,7 @@ export function StoreProvider({ children }) {
     setProfile(next);
     try {
       localStorage.setItem(PROFILE_KEY, JSON.stringify(next));
+      localStorage.setItem('si.profileUpdatedAt', String(Date.now())); // for Drive sync LWW
     } catch {
       /* quota / private mode */
     }
@@ -116,6 +136,7 @@ export function StoreProvider({ children }) {
     setSettings(next);
     try {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
+      localStorage.setItem('si.settingsUpdatedAt', String(Date.now())); // for Drive sync LWW
     } catch {
       /* ignore */
     }
@@ -166,6 +187,41 @@ export function StoreProvider({ children }) {
 
   const clearProgram = useCallback(() => {
     persistProgram(null);
+  }, []);
+
+  // ---- projects (named containers for recordings, e.g. reading a whole book) ----
+  const createProject = useCallback((data = {}) => {
+    const p = {
+      id: uid(),
+      name: (data.name || 'Untitled project').trim(),
+      notes: data.notes || '',
+      text: data.text || '', // optional full work; when present, read in passages
+      passageIndex: 0,
+      createdAt: new Date().toISOString(),
+    };
+    setProjects((prev) => {
+      const next = [p, ...prev];
+      saveProjects(next);
+      return next;
+    });
+    return p;
+  }, []);
+
+  const updateProject = useCallback((id, patch) => {
+    setProjects((prev) => {
+      const next = prev.map((x) => (x.id === id ? { ...x, ...patch } : x));
+      saveProjects(next);
+      return next;
+    });
+  }, []);
+
+  const deleteProject = useCallback((id) => {
+    // Sessions keep their projectId (harmlessly dangling); only the container goes.
+    setProjects((prev) => {
+      const next = prev.filter((x) => x.id !== id);
+      saveProjects(next);
+      return next;
+    });
   }, []);
 
   // ---- vocal-mastery track (persisted per-stage best score + matched flag) ----
@@ -311,11 +367,15 @@ export function StoreProvider({ children }) {
       settings,
       program,
       masteryProgress,
+      projects,
       updateProfile,
       updateSettings,
       startProgram,
       completeProgramStep,
       clearProgram,
+      createProject,
+      updateProject,
+      deleteProject,
       recordTechniqueResult,
       resetMastery,
       addSession,
@@ -329,8 +389,9 @@ export function StoreProvider({ children }) {
       getAudioBlob,
     }),
     [
-      loading, storageError, sessions, profile, settings, program, masteryProgress,
+      loading, storageError, sessions, profile, settings, program, masteryProgress, projects,
       updateProfile, updateSettings, startProgram, completeProgramStep, clearProgram,
+      createProject, updateProject, deleteProject,
       recordTechniqueResult, resetMastery, addSession,
       updateSession, removeSession, purgeAudio, purgeAllAudio,
       resetAllData, rescoreAll, refresh, getAudioBlob,
