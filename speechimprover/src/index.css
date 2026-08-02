@@ -695,17 +695,72 @@ table.data tr:hover td {
     background: rgba(0, 0, 0, 0.5);
     cursor: pointer;
   }
-  .grid.cols-2,
-  .grid.cols-3,
-  .grid.cols-4 {
+  /* Tablet / large phone: 2-up stat tiles; forms & split panels go single-column */
+  .grid.cols-2 {
     grid-template-columns: 1fr;
   }
+  .grid.cols-3,
+  .grid.cols-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .topbar {
+    padding: 10px 14px;
+    gap: 10px;
+  }
+  .content {
+    padding: 16px 14px;
+  }
+  /* Declutter the mobile header: drop the verbose device chips + status word,
+     keep the live mic meter. Which mic/speaker lives in Settings. */
   .devicebar {
     font-size: 0.72rem;
+    gap: 10px;
+  }
+  .device-chip,
+  .devicebar .tiny.muted {
+    display: none;
+  }
+  /* iOS zooms the page when a focused input is < 16px — pin to 16px on touch. */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+  /* Comfortable tap targets */
+  .btn {
+    padding-top: 11px;
+    padding-bottom: 11px;
+  }
+  /* Wide data tables scroll horizontally instead of breaking the layout. */
+  table.data {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+  .modal {
+    padding: 18px;
   }
   .artic-svg {
     width: 132px;
     height: 132px;
+  }
+}
+
+/* Small phones: collapse everything to a single column, tighten spacing. */
+@media (max-width: 560px) {
+  .grid.cols-3,
+  .grid.cols-4 {
+    grid-template-columns: 1fr;
+  }
+  .content {
+    padding: 14px 12px;
+  }
+  h1 {
+    font-size: 1.4rem;
+  }
+  .stat .big {
+    font-size: 1.6rem;
   }
 }
 
