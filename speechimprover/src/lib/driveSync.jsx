@@ -29,6 +29,11 @@ import {
 // SpeechImprover, …). This is that shared client id (an identifier, not a secret; it
 // only works from its registered origins). Result: Drive sync needs zero per-app setup
 // on the authorized site. A fork elsewhere supplies its own via VITE_GOOGLE_CLIENT_ID.
+// ponytail: reuses GymTracker's OAuth client, so the Google consent screen shows the wrong
+// app name and all these apps share one appDataFolder (deconflicted only by file name). Fine
+// for personal use; if SpeechImprover ships as a public product, register its own client id
+// (add https://adervec.github.io as an origin) for correct branding. See memory
+// shared-oauth-client-origin.
 const BUILTIN_CLIENT_ID = '547617739897-br6dj2facmsc34qnkjb5u4dbfhju39pu.apps.googleusercontent.com';
 const OAUTH_ORIGINS = ['https://adervec.github.io'];
 function originAllowed() {
