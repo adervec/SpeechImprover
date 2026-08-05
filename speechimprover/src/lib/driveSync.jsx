@@ -24,7 +24,25 @@ import {
   deleteSession as dbDeleteSession, deleteAudio,
 } from './db.js';
 
-const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+// Google OAuth authorizes by ORIGIN, not path — so one client id registered for
+// https://adervec.github.io covers every Pages app under it (GymTracker, Tachyread,
+// SpeechImprover, …). This is that shared client id (an identifier, not a secret; it
+// only works from its registered origins). Result: Drive sync needs zero per-app setup
+// on the authorized site. A fork elsewhere supplies its own via VITE_GOOGLE_CLIENT_ID.
+const BUILTIN_CLIENT_ID = '547617739897-br6dj2facmsc34qnkjb5u4dbfhju39pu.apps.googleusercontent.com';
+const OAUTH_ORIGINS = ['https://adervec.github.io'];
+function originAllowed() {
+  try {
+    const h = location.hostname;
+    if (h === 'localhost' || h === '127.0.0.1' || h === '[::1]') return true; // local dev
+    return OAUTH_ORIGINS.includes(location.origin);
+  } catch { return false; }
+}
+// A user-supplied id (fork/self-host) wins; otherwise the built-in id on an authorized
+// origin; otherwise empty → Drive sync stays off (a fork without its own id).
+const CLIENT_ID =
+  (import.meta.env.VITE_GOOGLE_CLIENT_ID || '').trim() ||
+  (originAllowed() ? BUILTIN_CLIENT_ID : '');
 const SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
 const FILE_NAME = 'speechimprover-sync.json';
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
