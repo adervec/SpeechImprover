@@ -10,6 +10,7 @@ import { formatDuration } from '../lib/format.js';
 import { exportProjectAudiobook, reconcileTracks, orderedProjectSessions } from '../lib/audiobook.js';
 import { decodeBlob } from '../lib/analysis/audioAnalysis.js';
 import { encodeWav, resampleLinear } from '../lib/audioEnhance.js';
+import WaveformEditor from '../components/WaveformEditor.jsx';
 
 function projectStats(project, sessions) {
   const mine = sessions.filter((s) => s.projectId === project.id);
@@ -143,6 +144,7 @@ function ProjectDetail({ project, sessions, updateProject, deleteProject, naviga
   const [confirmDel, setConfirmDel] = useState(false);
   const [openIds, setOpenIds] = useState(() => new Set());
   const [exporting, setExporting] = useState(null); // null | { i, total, title }
+  const [editing, setEditing] = useState(null); // track index being trimmed/split
   const st = useMemo(() => projectStats(project, sessions), [project, sessions]);
   const total = st.passages.length;
   const idx = Math.min(project.passageIndex || 0, total);
@@ -169,6 +171,24 @@ function ProjectDetail({ project, sessions, updateProject, deleteProject, naviga
   }
   function renameTrack(i, title) {
     commitTracks(tracks.map((t, k) => (k === i ? { ...t, title } : t)));
+  }
+  // Apply a waveform edit: region [start,end] + cut times → one trimmed track, or N split
+  // tracks (each a segment of the same recording). Only single-segment tracks are editable.
+  function applyEdit(i, [start, end], cuts) {
+    const t = tracks[i];
+    const sid = t.segments[0].sessionId;
+    const bounds = [start, ...cuts, end];
+    const pieces = [];
+    for (let k = 0; k < bounds.length - 1; k += 1) {
+      pieces.push({
+        id: `t-${sid}-${Math.round(bounds[k] * 1000)}`,
+        title: bounds.length > 2 ? `${t.title} (${k + 1})` : t.title,
+        segments: [{ sessionId: sid, startSec: +bounds[k].toFixed(3), endSec: +bounds[k + 1].toFixed(3) }],
+      });
+    }
+    commitTracks([...tracks.slice(0, i), ...pieces, ...tracks.slice(i + 1)]);
+    setEditing(null);
+    toast(pieces.length > 1 ? `Split into ${pieces.length} tracks.` : 'Trim applied.');
   }
   function toggleOpen(id) {
     setOpenIds((prev) => {
@@ -308,6 +328,9 @@ function ProjectDetail({ project, sessions, updateProject, deleteProject, naviga
                     </div>
                     <div className="row" style={{ gap: 6 }}>
                       <button className="btn ghost sm" onClick={() => toggleOpen(t.id)}>{open ? '▴ hide' : '▾ transcript'}</button>
+                      {t.segments.length === 1 && byId[t.segments[0].sessionId]?.audioId && (
+                        <button className="btn ghost sm" onClick={() => setEditing(i)}>✂ Edit</button>
+                      )}
                       {m.firstId && <button className="btn ghost sm" onClick={() => navigate('session', { param: m.firstId })}>Open</button>}
                     </div>
                   </div>
@@ -322,6 +345,17 @@ function ProjectDetail({ project, sessions, updateProject, deleteProject, naviga
           </div>
         )}
       </div>
+
+      {editing != null && tracks[editing]?.segments.length === 1 && byId[tracks[editing].segments[0].sessionId] && (
+        <WaveformEditor
+          session={byId[tracks[editing].segments[0].sessionId]}
+          getAudioBlob={getAudioBlob}
+          initialStart={tracks[editing].segments[0].startSec ?? 0}
+          initialEnd={tracks[editing].segments[0].endSec ?? null}
+          onApply={(region, cuts) => applyEdit(editing, region, cuts)}
+          onClose={() => setEditing(null)}
+        />
+      )}
 
       {confirmDel && (
         <Modal
