@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { enhanceRecording } from '../lib/audioEnhance.js';
 import { formatDuration } from '../lib/format.js';
+import RecordingAudio from './RecordingAudio.jsx';
 
 export default function ImprovedVoicePreview({ audioUrl, session }) {
   const [status, setStatus] = useState('idle'); // idle | working | ready | error
@@ -60,11 +61,11 @@ export default function ImprovedVoicePreview({ audioUrl, session }) {
           <div className="grid cols-2">
             <div>
               <div className="tag">Original</div>
-              <audio src={audioUrl} controls style={{ width: '100%', marginTop: 6 }} />
+              <RecordingAudio src={audioUrl} style={{ marginTop: 6 }} />
             </div>
             <div>
               <div className="tag" style={{ color: 'var(--good)' }}>Improved</div>
-              <audio src={result.url} controls style={{ width: '100%', marginTop: 6 }} />
+              <RecordingAudio src={result.url} style={{ marginTop: 6 }} />
             </div>
           </div>
 

@@ -4,6 +4,7 @@ import { useRecorder } from '../lib/recorderContext.jsx';
 import { useToast } from '../components/ui.jsx';
 import SessionReport from '../components/SessionReport.jsx';
 import ArticulationModel from '../components/ArticulationModel.jsx';
+import RecordingAudio from '../components/RecordingAudio.jsx';
 import { analyzeRecording, assessCompletion } from '../lib/analysis/index.js';
 import { ATTRIBUTE_MAP } from '../lib/analysis/attributes.js';
 import {
@@ -376,7 +377,7 @@ export default function Practice({ route, navigate }) {
               )}
             </p>
           </div>
-          {pendingRec.previewUrl && <audio src={pendingRec.previewUrl} controls style={{ width: '100%' }} />}
+          {pendingRec.previewUrl && <RecordingAudio src={pendingRec.previewUrl} />}
           <div className="row wrap" style={{ marginTop: 16 }}>
             <button className="btn primary lg" onClick={submitRecording}>✓ Submit for analysis</button>
             <button className="btn lg" onClick={restartRecording}>↻ Restart</button>

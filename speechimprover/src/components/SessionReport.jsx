@@ -7,6 +7,7 @@ import { ScoreRing, RadarChart } from './charts.jsx';
 import { AttributeBars } from './ui.jsx';
 import AnnotatedTranscript from './AnnotatedTranscript.jsx';
 import ImprovedVoicePreview from './ImprovedVoicePreview.jsx';
+import RecordingAudio from './RecordingAudio.jsx';
 import { ATTRIBUTES, REFERENCE_PROFILES } from '../lib/analysis/attributes.js';
 import { formatDuration } from '../lib/format.js';
 
@@ -48,7 +49,7 @@ function CompletionReport({ session, audioUrl }) {
       {audioUrl && (
         <div className="card">
           <div className="card-head"><h3>Recording</h3></div>
-          <audio src={audioUrl} controls style={{ width: '100%' }} />
+          <RecordingAudio src={audioUrl} />
         </div>
       )}
     </div>
@@ -119,7 +120,7 @@ function TechniqueReport({ session, audioUrl }) {
       {audioUrl && (
         <div className="card">
           <div className="card-head"><h3>Recording</h3></div>
-          <audio src={audioUrl} controls style={{ width: '100%' }} />
+          <RecordingAudio src={audioUrl} />
         </div>
       )}
     </div>
@@ -216,7 +217,7 @@ export default function SessionReport({ session, audioUrl, onSelectAttr, focusAt
       {audioUrl && (
         <div className="card">
           <div className="card-head"><h3>Recording</h3></div>
-          <audio src={audioUrl} controls style={{ width: '100%' }} />
+          <RecordingAudio src={audioUrl} />
         </div>
       )}
     </div>

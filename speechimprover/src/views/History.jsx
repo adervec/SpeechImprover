@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useStore } from '../lib/store.jsx';
 import { ScoreBadge, EmptyState, Modal, useToast } from '../components/ui.jsx';
 import { formatDateTime, formatBytes } from '../lib/format.js';
+import RecordingAudio from '../components/RecordingAudio.jsx';
 
 export default function History({ navigate }) {
   const { sessions, removeSession, purgeAudio, getAudioBlob } = useStore();
@@ -150,7 +151,7 @@ export default function History({ navigate }) {
                 {playingId === s.id && audioUrls[s.id] && (
                   <tr>
                     <td colSpan={7} style={{ background: 'var(--bg-2)' }}>
-                      <audio src={audioUrls[s.id]} controls autoPlay style={{ width: '100%' }} />
+                      <RecordingAudio src={audioUrls[s.id]} autoPlay />
                     </td>
                   </tr>
                 )}

@@ -4,6 +4,7 @@ import { RadarChart, ScoreRing } from '../components/charts.jsx';
 import { EmptyState } from '../components/ui.jsx';
 import { ATTRIBUTES, REFERENCE_PROFILES } from '../lib/analysis/attributes.js';
 import { formatDateTime } from '../lib/format.js';
+import RecordingAudio from '../components/RecordingAudio.jsx';
 
 function useAudioUrl(audioId, getAudioBlob) {
   const [url, setUrl] = useState(null);
@@ -100,7 +101,7 @@ export default function Compare({ route, navigate }) {
                     <ScoreRing value={s.overall} size={74} />
                   </div>
                   {url ? (
-                    <audio src={url} controls style={{ width: '100%' }} />
+                    <RecordingAudio src={url} />
                   ) : (
                     <p className="tiny muted">Audio purged or unavailable for this session.</p>
                   )}
