@@ -292,18 +292,28 @@ export default function Practice({ route, navigate }) {
     const isTechnique = !!result.session.technique;
     const programInfo = inProgramMode ? { done: progDone, total: progTotal, nextPendingIdx } : null;
 
-    // Always offer a next thing to do when this wasn't a mid-program step: nudge back into an
-    // active program if one is running, else a fresh drill targeting the user's weakest attribute.
+    // Always offer a next thing to do when this wasn't a mid-program step. Priority: continue the
+    // project this take belongs to → resume an active daily program → a fresh weakest-targeting drill.
     let suggestion = null;
     if (!inProgramMode && !isTechnique) {
+      const proj = result.session.projectId ? projects.find((p) => p.id === result.session.projectId) : null;
       const pendingIdx = program?.steps ? program.steps.findIndex((s) => s.status === 'pending') : -1;
-      if (pendingIdx >= 0) {
-        suggestion = { kind: 'program', exercise: program.steps[pendingIdx].exercise, stepIdx: pendingIdx };
+      if (proj) {
+        const projPassages = proj.text?.trim() ? splitIntoPassages(proj.text, proj.chunkWords) : [];
+        const readAll = projPassages.length > 0 && (proj.passageIndex || 0) >= projPassages.length;
+        suggestion = {
+          kind: 'project',
+          label: !projPassages.length
+            ? `Record another into “${proj.name}” →`
+            : readAll ? `“${proj.name}” fully read — record more →` : `Next passage of “${proj.name}” →`,
+        };
+      } else if (pendingIdx >= 0) {
+        suggestion = { kind: 'program', stepIdx: pendingIdx, label: `Resume program: ${program.steps[pendingIdx].exercise.title} →` };
       } else {
         const weakKeys = weakestAttributes(sessions, 2).map((w) => w.key);
         const recentIds = sessions.slice(0, 8).map((s) => s.exerciseId).filter(Boolean);
         const ex = suggestNextExercise(weakKeys, result.session.exerciseId, recentIds);
-        if (ex) suggestion = { kind: 'single', exercise: ex };
+        if (ex) suggestion = { kind: 'single', exerciseId: ex.id, label: `Next: ${ex.title} →` };
       }
     }
     return (
@@ -345,7 +355,8 @@ export default function Practice({ route, navigate }) {
           onSuggested={() => {
             saveNotes();
             if (suggestion.kind === 'program') goToStep(suggestion.stepIdx);
-            else navigate('practice', { query: { exercise: suggestion.exercise.id } });
+            else if (suggestion.kind === 'project') reset(); // re-setup in place; passage already advanced
+            else navigate('practice', { query: { exercise: suggestion.exerciseId } });
           }}
           onToProgram={() => { saveNotes(); navigate('exercises'); }}
           onDone={() => { saveNotes(); navigate(isTechnique ? 'mastery' : ''); }}
@@ -670,9 +681,6 @@ function DebriefPanel({ session, notes, setNotes, onSaveNotes, program }) {
 // user has scrolled through the transcript and articulation review.
 function DecisionBar({ program, isTechnique, suggestion, onAgain, onNext, onSuggested, onToProgram, onDone }) {
   const hasNext = program && program.nextPendingIdx >= 0;
-  const suggestLabel = suggestion
-    ? (suggestion.kind === 'program' ? `Resume program: ${suggestion.exercise.title} →` : `Next: ${suggestion.exercise.title} →`)
-    : null;
   return (
     <div className="card" style={{ borderColor: 'var(--accent)' }}>
       <div className="row spread wrap" style={{ gap: 12 }}>
@@ -694,7 +702,7 @@ function DecisionBar({ program, isTechnique, suggestion, onAgain, onNext, onSugg
             <>
               <button className="btn ghost" onClick={onAgain}>↻ Again</button>
               <button className="btn" onClick={onDone}>{isTechnique ? 'Back to mastery' : 'Done'}</button>
-              {suggestion && <button className="btn primary" onClick={onSuggested}>{suggestLabel}</button>}
+              {suggestion && <button className="btn primary" onClick={onSuggested}>{suggestion.label}</button>}
             </>
           )}
         </div>

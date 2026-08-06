@@ -6,25 +6,28 @@ import { useStore } from '../lib/store.jsx';
 import { ScoreBadge, EmptyState, Modal, useToast } from '../components/ui.jsx';
 import { splitIntoPassages } from '../lib/passages.js';
 import { averageOverall } from '../lib/aggregate.js';
-import { formatDuration, formatDateTime } from '../lib/format.js';
+import { formatDuration } from '../lib/format.js';
+import { exportProjectAudiobook, reconcileTracks, orderedProjectSessions } from '../lib/audiobook.js';
+import { decodeBlob } from '../lib/analysis/audioAnalysis.js';
+import { encodeWav, resampleLinear } from '../lib/audioEnhance.js';
 
 function projectStats(project, sessions) {
   const mine = sessions.filter((s) => s.projectId === project.id);
   const scored = mine.filter((s) => s.overall != null);
   const duration = mine.reduce((sum, s) => sum + (s.durationSec || s.metrics?.durationSec || 0), 0);
-  const passages = project.text?.trim() ? splitIntoPassages(project.text) : [];
+  const passages = project.text?.trim() ? splitIntoPassages(project.text, project.chunkWords) : [];
   return { mine, count: mine.length, avg: averageOverall(scored), duration, passages };
 }
 
 export default function Projects({ route, navigate }) {
-  const { projects, sessions, createProject, updateProject, deleteProject } = useStore();
+  const { projects, sessions, createProject, updateProject, deleteProject, getAudioBlob } = useStore();
 
   if (route.param) {
     const project = projects.find((p) => p.id === route.param);
     if (!project) {
       return <EmptyState icon="📁" title="Project not found" action={<button className="btn primary" onClick={() => navigate('projects')}>All projects</button>}>It may have been deleted.</EmptyState>;
     }
-    return <ProjectDetail project={project} sessions={sessions} updateProject={updateProject} deleteProject={deleteProject} navigate={navigate} />;
+    return <ProjectDetail project={project} sessions={sessions} updateProject={updateProject} deleteProject={deleteProject} navigate={navigate} getAudioBlob={getAudioBlob} />;
   }
 
   return <ProjectList projects={projects} sessions={sessions} createProject={createProject} navigate={navigate} />;
@@ -108,16 +111,107 @@ function ProjectList({ projects, sessions, createProject, navigate }) {
   );
 }
 
-function ProjectDetail({ project, sessions, updateProject, deleteProject, navigate }) {
+// Inline-editable track title (the recording's alias within the project).
+function EditableTitle({ value, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState(value);
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        onBlur={() => { setEditing(false); if (val.trim() && val.trim() !== value) onSave(val.trim()); }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur();
+          if (e.key === 'Escape') { setVal(value); setEditing(false); }
+        }}
+        style={{ width: 'auto', minWidth: 160, maxWidth: '60vw', padding: '4px 8px' }}
+      />
+    );
+  }
+  return (
+    <button className="btn ghost sm" style={{ padding: '2px 6px', fontWeight: 700 }} title="Rename track"
+      onClick={() => { setVal(value); setEditing(true); }}>
+      {value} ✎
+    </button>
+  );
+}
+
+function ProjectDetail({ project, sessions, updateProject, deleteProject, navigate, getAudioBlob }) {
   const toast = useToast();
   const [confirmDel, setConfirmDel] = useState(false);
+  const [openIds, setOpenIds] = useState(() => new Set());
+  const [exporting, setExporting] = useState(null); // null | { i, total, title }
   const st = useMemo(() => projectStats(project, sessions), [project, sessions]);
   const total = st.passages.length;
   const idx = Math.min(project.passageIndex || 0, total);
   const pct = total ? Math.round(idx / total * 100) : null;
+  const chunkWords = project.chunkWords || 90;
+
+  // Curated tracklist over the recordings (may not be 1:1: reordered, renamed, later split/merged).
+  const ordered = useMemo(() => orderedProjectSessions(project, sessions), [project, sessions]);
+  const tracks = useMemo(() => reconcileTracks(project.tracks, ordered), [project.tracks, ordered]);
+  const byId = useMemo(() => Object.fromEntries(sessions.map((s) => [s.id, s])), [sessions]);
 
   function setPos(i) {
     updateProject(project.id, { passageIndex: Math.max(0, Math.min(i, total)) });
+  }
+  function commitTracks(next) {
+    updateProject(project.id, { tracks: next });
+  }
+  function moveTrack(i, dir) {
+    const j = i + dir;
+    if (j < 0 || j >= tracks.length) return;
+    const next = [...tracks];
+    [next[i], next[j]] = [next[j], next[i]];
+    commitTracks(next);
+  }
+  function renameTrack(i, title) {
+    commitTracks(tracks.map((t, k) => (k === i ? { ...t, title } : t)));
+  }
+  function toggleOpen(id) {
+    setOpenIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+  function trackMeta(t) {
+    const segs = t.segments.map((seg) => byId[seg.sessionId]).filter(Boolean);
+    const duration = segs.reduce((n, s) => n + (s.durationSec || s.metrics?.durationSec || 0), 0);
+    const scored = segs.filter((s) => s.overall != null);
+    const avg = scored.length ? Math.round(scored.reduce((n, s) => n + s.overall, 0) / scored.length) : null;
+    const transcript = segs.map((s) => s.transcript).filter(Boolean).join('\n\n');
+    return { segs, duration, avg, transcript, firstId: segs[0]?.id || null };
+  }
+
+  function download(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }
+  async function exportAudiobook() {
+    setExporting({ i: 0, total: tracks.length, title: '' });
+    try {
+      const res = await exportProjectAudiobook(
+        project,
+        sessions,
+        { getAudioBlob, decodeBlob, encodeWav, resampleLinear },
+        (p) => setExporting(p),
+      );
+      download(res.blob, res.filename);
+      toast(`Exported ${res.trackCount} track${res.trackCount === 1 ? '' : 's'} · ${formatDuration(res.totalSec)}.`);
+    } catch (e) {
+      toast(e.message || 'Export failed.');
+    } finally {
+      setExporting(null);
+    }
   }
 
   return (
@@ -160,28 +254,72 @@ function ProjectDetail({ project, sessions, updateProject, deleteProject, naviga
             <button className="btn sm" disabled={idx >= total} onClick={() => setPos(idx + 1)}>Skip ▶</button>
             <button className="btn ghost sm" onClick={() => setPos(0)}>Reset to start</button>
           </div>
+
+          <div style={{ marginTop: 16 }}>
+            <div className="row spread">
+              <span className="tiny muted">Passage size</span>
+              <span className="tiny mono">~{chunkWords} words · {total} passages</span>
+            </div>
+            <input
+              type="range" min={30} max={200} step={10} value={chunkWords} style={{ padding: 0 }}
+              onChange={(e) => updateProject(project.id, { chunkWords: Number(e.target.value) })}
+            />
+            <p className="tiny muted" style={{ marginTop: 4 }}>
+              Splits on paragraph breaks first, then fills up to this many words per passage. Changing it re-chunks the text.
+            </p>
+          </div>
         </div>
       )}
 
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div className="card-head" style={{ padding: '14px 16px 0' }}><h3>Recordings</h3></div>
-        {st.mine.length === 0 ? (
-          <p className="muted small" style={{ padding: '8px 16px 16px' }}>No recordings assigned yet. Use “Record into this project”.</p>
+      <div className="card">
+        <div className="card-head">
+          <div>
+            <h3>🎧 Tracklist</h3>
+            <span className="tiny muted">reorder, rename &amp; preview — this is exactly what the audiobook exports</span>
+          </div>
+          <button className="btn primary sm" disabled={!tracks.length || !!exporting} onClick={exportAudiobook}>
+            {exporting ? `Rendering ${Math.min(exporting.i + 1, exporting.total)}/${exporting.total}…` : '⬇ Export audiobook'}
+          </button>
+        </div>
+        {tracks.length === 0 ? (
+          <p className="muted small">No recordings assigned yet. Use “Record into this project”.</p>
         ) : (
-          <table className="data">
-            <thead><tr><th>When</th><th>Title</th><th>Overall</th><th>Length</th><th></th></tr></thead>
-            <tbody>
-              {st.mine.map((s) => (
-                <tr key={s.id}>
-                  <td className="nowrap small">{formatDateTime(s.createdAt)}</td>
-                  <td>{s.exerciseTitle || s.mode}</td>
-                  <td>{s.overall != null ? <ScoreBadge score={s.overall} /> : '—'}</td>
-                  <td className="mono small">{formatDuration(s.durationSec || s.metrics?.durationSec)}</td>
-                  <td className="nowrap" style={{ textAlign: 'right' }}><button className="btn ghost sm" onClick={() => navigate('session', { param: s.id })}>Open</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="stack" style={{ gap: 8 }}>
+            {tracks.map((t, i) => {
+              const m = trackMeta(t);
+              const open = openIds.has(t.id);
+              return (
+                <div key={t.id} className="card tight" style={{ background: 'var(--bg-2)' }}>
+                  <div className="row spread wrap" style={{ gap: 8 }}>
+                    <div className="row" style={{ gap: 8, minWidth: 0 }}>
+                      <div className="stack" style={{ gap: 2 }}>
+                        <button className="btn ghost sm" style={{ padding: '0 7px', lineHeight: 1.2 }} disabled={i === 0} onClick={() => moveTrack(i, -1)} aria-label="Move up">▲</button>
+                        <button className="btn ghost sm" style={{ padding: '0 7px', lineHeight: 1.2 }} disabled={i === tracks.length - 1} onClick={() => moveTrack(i, 1)} aria-label="Move down">▼</button>
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div className="row" style={{ gap: 8 }}>
+                          <span className="tag">#{i + 1}</span>
+                          <EditableTitle value={t.title} onSave={(v) => renameTrack(i, v)} />
+                        </div>
+                        <span className="tiny muted">
+                          {formatDuration(m.duration)}{m.segs.length > 1 ? ` · ${m.segs.length} clips` : ''}{m.avg != null ? ` · avg ${m.avg}` : ''}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="row" style={{ gap: 6 }}>
+                      <button className="btn ghost sm" onClick={() => toggleOpen(t.id)}>{open ? '▴ hide' : '▾ transcript'}</button>
+                      {m.firstId && <button className="btn ghost sm" onClick={() => navigate('session', { param: m.firstId })}>Open</button>}
+                    </div>
+                  </div>
+                  {open && (
+                    <p className="tiny" style={{ marginTop: 8, whiteSpace: 'pre-wrap', color: 'var(--text-dim)' }}>
+                      {m.transcript || 'No transcript captured for this recording.'}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 
