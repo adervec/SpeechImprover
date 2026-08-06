@@ -6,14 +6,28 @@ import { EXERCISES, BASELINE_SET, CATEGORIES, generateProgram } from '../lib/exe
 import { ATTRIBUTES } from '../lib/analysis/attributes.js';
 import { formatDuration, relativeDay } from '../lib/format.js';
 
-function ExerciseCard({ ex, navigate, highlight = [] }) {
+function ExerciseCard({ ex, navigate, highlight = [], last = null }) {
+  const start = () => navigate('practice', { query: { exercise: ex.id } });
   return (
-    <div className="card tight" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div
+      className="card tight"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+        borderColor: last ? 'color-mix(in srgb, var(--good) 45%, var(--border))' : undefined,
+      }}
+    >
       <div className="row spread">
         <span className="tag">{ex.category}</span>
         <span className="tiny muted">{formatDuration(ex.durationSec)}</span>
       </div>
       <h3 style={{ fontSize: '1rem' }}>{ex.title}</h3>
+      {last && (
+        <div className="tiny" style={{ color: 'var(--good)', fontWeight: 700 }}>
+          ✓ Last done {relativeDay(last.at)}{last.count > 1 ? ` · ${last.count}×` : ''}
+        </div>
+      )}
       {ex.instructions && <p className="tiny muted" style={{ lineHeight: 1.5 }}>{ex.instructions}</p>}
       <div className="pill-group">
         {ex.targetAttributes.map((a) => (
@@ -22,9 +36,14 @@ function ExerciseCard({ ex, navigate, highlight = [] }) {
           </span>
         ))}
       </div>
-      <button className="btn primary block" onClick={() => navigate('practice', { query: { exercise: ex.id } })}>
-        Start →
-      </button>
+      {last ? (
+        <div className="row" style={{ gap: 6 }}>
+          <button className="btn sm" onClick={() => navigate('session', { param: last.sessionId })}>View last</button>
+          <button className="btn primary sm" style={{ flex: 1, justifyContent: 'center' }} onClick={start}>Practice again →</button>
+        </div>
+      ) : (
+        <button className="btn primary block" onClick={start}>Start →</button>
+      )}
     </div>
   );
 }
@@ -40,6 +59,21 @@ export default function Exercises({ route, navigate }) {
 
   const weak = useMemo(() => weakestAttributes(sessions, 2), [sessions]);
   const weakKeys = weak.map((w) => w.key);
+
+  // Last-done lookup per exercise id, so cards can show "✓ done" + when (and link to it).
+  const doneByExercise = useMemo(() => {
+    const m = new Map();
+    for (const s of sessions) {
+      if (!s.exerciseId) continue;
+      const cur = m.get(s.exerciseId);
+      if (!cur) m.set(s.exerciseId, { at: s.createdAt, sessionId: s.id, count: 1 });
+      else {
+        cur.count += 1;
+        if (s.createdAt > cur.at) { cur.at = s.createdAt; cur.sessionId = s.id; }
+      }
+    }
+    return m;
+  }, [sessions]);
   const [preview, setPreview] = useState(() => generateProgram(weak.map((w) => w.key)));
 
   const highlight = focusFromQuery ? [focusFromQuery] : weakKeys;
@@ -179,7 +213,7 @@ export default function Exercises({ route, navigate }) {
           Three samples that form your reference point. Re-record the same set each month and compare them back to back.
         </p>
         <div className="grid cols-3">
-          {BASELINE_SET.map((ex) => <ExerciseCard key={ex.id} ex={ex} navigate={navigate} highlight={highlight} />)}
+          {BASELINE_SET.map((ex) => <ExerciseCard key={ex.id} ex={ex} navigate={navigate} highlight={highlight} last={doneByExercise.get(ex.id) || null} />)}
         </div>
       </div>
 
@@ -202,7 +236,7 @@ export default function Exercises({ route, navigate }) {
           <div key={cat}>
             <h3 style={{ margin: '8px 0 12px' }}>{cat}</h3>
             <div className="grid cols-3">
-              {items.map((ex) => <ExerciseCard key={ex.id} ex={ex} navigate={navigate} highlight={highlight} />)}
+              {items.map((ex) => <ExerciseCard key={ex.id} ex={ex} navigate={navigate} highlight={highlight} last={doneByExercise.get(ex.id) || null} />)}
             </div>
           </div>
         );

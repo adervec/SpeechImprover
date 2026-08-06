@@ -13,7 +13,9 @@ import {
   passageLabel,
   FREE_PROMPTS,
   INTERVIEW_PROMPTS,
+  suggestNextExercise,
 } from '../lib/exercises.js';
+import { weakestAttributes } from '../lib/aggregate.js';
 import { getTechniqueExercise, evaluateStage } from '../lib/vocalMastery.js';
 import { splitIntoPassages } from '../lib/passages.js';
 import { formatDuration } from '../lib/format.js';
@@ -69,7 +71,7 @@ function buildCustomExercise(mode, prompt, passageId, tone) {
 }
 
 export default function Practice({ route, navigate }) {
-  const { profile, settings, addSession, updateSession, program, completeProgramStep, recordTechniqueResult, projects, updateProject } = useStore();
+  const { profile, settings, sessions, addSession, updateSession, program, completeProgramStep, recordTechniqueResult, projects, updateProject } = useStore();
   const recorder = useRecorder();
   const toast = useToast();
 
@@ -288,6 +290,21 @@ export default function Practice({ route, navigate }) {
   if (phase === 'result' && result) {
     const isTechnique = !!result.session.technique;
     const programInfo = inProgramMode ? { done: progDone, total: progTotal, nextPendingIdx } : null;
+
+    // Always offer a next thing to do when this wasn't a mid-program step: nudge back into an
+    // active program if one is running, else a fresh drill targeting the user's weakest attribute.
+    let suggestion = null;
+    if (!inProgramMode && !isTechnique) {
+      const pendingIdx = program?.steps ? program.steps.findIndex((s) => s.status === 'pending') : -1;
+      if (pendingIdx >= 0) {
+        suggestion = { kind: 'program', exercise: program.steps[pendingIdx].exercise, stepIdx: pendingIdx };
+      } else {
+        const weakKeys = weakestAttributes(sessions, 2).map((w) => w.key);
+        const recentIds = sessions.slice(0, 8).map((s) => s.exerciseId).filter(Boolean);
+        const ex = suggestNextExercise(weakKeys, result.session.exerciseId, recentIds);
+        if (ex) suggestion = { kind: 'single', exercise: ex };
+      }
+    }
     return (
       <div className="stack">
         <div className="row spread wrap" style={{ marginBottom: 2 }}>
@@ -321,8 +338,14 @@ export default function Practice({ route, navigate }) {
         <DecisionBar
           program={programInfo}
           isTechnique={isTechnique}
+          suggestion={suggestion}
           onAgain={reset}
           onNext={() => goToStep(nextPendingIdx)}
+          onSuggested={() => {
+            saveNotes();
+            if (suggestion.kind === 'program') goToStep(suggestion.stepIdx);
+            else navigate('practice', { query: { exercise: suggestion.exercise.id } });
+          }}
           onToProgram={() => { saveNotes(); navigate('exercises'); }}
           onDone={() => { saveNotes(); navigate(isTechnique ? 'mastery' : ''); }}
         />
@@ -644,8 +667,11 @@ function DebriefPanel({ session, notes, setNotes, onSaveNotes, program }) {
 
 // Bottom-of-page "what next?" bar so the retry/continue decision comes after the
 // user has scrolled through the transcript and articulation review.
-function DecisionBar({ program, isTechnique, onAgain, onNext, onToProgram, onDone }) {
+function DecisionBar({ program, isTechnique, suggestion, onAgain, onNext, onSuggested, onToProgram, onDone }) {
   const hasNext = program && program.nextPendingIdx >= 0;
+  const suggestLabel = suggestion
+    ? (suggestion.kind === 'program' ? `Resume program: ${suggestion.exercise.title} →` : `Next: ${suggestion.exercise.title} →`)
+    : null;
   return (
     <div className="card" style={{ borderColor: 'var(--accent)' }}>
       <div className="row spread wrap" style={{ gap: 12 }}>
@@ -665,8 +691,9 @@ function DecisionBar({ program, isTechnique, onAgain, onNext, onToProgram, onDon
             </>
           ) : (
             <>
-              <button className="btn" onClick={onAgain}>↻ Practice again</button>
-              <button className="btn primary" onClick={onDone}>{isTechnique ? 'Back to mastery' : 'Done'}</button>
+              <button className="btn ghost" onClick={onAgain}>↻ Again</button>
+              <button className="btn" onClick={onDone}>{isTechnique ? 'Back to mastery' : 'Done'}</button>
+              {suggestion && <button className="btn primary" onClick={onSuggested}>{suggestLabel}</button>}
             </>
           )}
         </div>

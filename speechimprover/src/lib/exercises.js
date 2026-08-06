@@ -323,3 +323,25 @@ export function generateProgram(weakAttributes = []) {
 
   return program.filter(Boolean);
 }
+
+// Suggest one "next" drill after a standalone exercise: an exercise targeting the user's
+// weakest attribute, skipping the one just done and, where possible, anything done recently.
+// Deterministic (first match) so the suggestion is stable across re-renders.
+export function suggestNextExercise(weakKeys = [], excludeId = null, recentIds = []) {
+  const recent = new Set(recentIds);
+  const targets = weakKeys.length ? weakKeys : ['fillers', 'pace'];
+  const pool = EXERCISES.filter((e) => e.id !== excludeId);
+  const pick = (avoidRecent) =>
+    targets
+      .map((k) => pool.find((e) => e.targetAttributes.includes(k) && (!avoidRecent || !recent.has(e.id))))
+      .find(Boolean);
+  return pick(true) || pick(false) || pool[0] || null;
+}
+
+export function demo() {
+  const a = suggestNextExercise(['fillers'], 'free-0', ['free-0']);
+  console.assert(a && a.id !== 'free-0' && a.targetAttributes.includes('fillers'), 'targets weakest, skips excluded');
+  console.assert(!!suggestNextExercise([], null, []), 'always returns a suggestion');
+  console.assert(!!suggestNextExercise(['not-an-attr'], null, []), 'unknown attr falls back to pool');
+  return a;
+}
