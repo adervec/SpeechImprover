@@ -172,6 +172,26 @@ function ProjectDetail({ project, sessions, updateProject, deleteProject, naviga
   function renameTrack(i, title) {
     commitTracks(tracks.map((t, k) => (k === i ? { ...t, title } : t)));
   }
+  // Merge track i into the next one: one track playing both takes back to back.
+  function mergeDown(i) {
+    if (i >= tracks.length - 1) return;
+    const a = tracks[i]; const b = tracks[i + 1];
+    const merged = { id: a.id, title: a.title, segments: [...a.segments, ...b.segments] };
+    commitTracks([...tracks.slice(0, i), merged, ...tracks.slice(i + 2)]);
+    toast('Tracks merged.');
+  }
+  // Inverse of merge: break a multi-segment track back into one track per clip.
+  function ungroup(i) {
+    const t = tracks[i];
+    if (t.segments.length < 2) return;
+    const pieces = t.segments.map((seg, k) => ({
+      id: `t-${seg.sessionId}-${k}-${Math.round((seg.startSec ?? 0) * 1000)}`,
+      title: `${t.title} (${k + 1})`,
+      segments: [seg],
+    }));
+    commitTracks([...tracks.slice(0, i), ...pieces, ...tracks.slice(i + 1)]);
+    toast(`Ungrouped into ${pieces.length} tracks.`);
+  }
   // Apply a waveform edit: region [start,end] + cut times → one trimmed track, or N split
   // tracks (each a segment of the same recording). Only single-segment tracks are editable.
   function applyEdit(i, [start, end], cuts) {
@@ -295,7 +315,7 @@ function ProjectDetail({ project, sessions, updateProject, deleteProject, naviga
         <div className="card-head">
           <div>
             <h3>🎧 Tracklist</h3>
-            <span className="tiny muted">reorder, rename &amp; preview — this is exactly what the audiobook exports</span>
+            <span className="tiny muted">reorder, rename, merge/split &amp; preview — this is exactly what the audiobook exports</span>
           </div>
           <button className="btn primary sm" disabled={!tracks.length || !!exporting} onClick={exportAudiobook}>
             {exporting ? `Rendering ${Math.min(exporting.i + 1, exporting.total)}/${exporting.total}…` : '⬇ Export audiobook'}
@@ -330,6 +350,12 @@ function ProjectDetail({ project, sessions, updateProject, deleteProject, naviga
                       <button className="btn ghost sm" onClick={() => toggleOpen(t.id)}>{open ? '▴ hide' : '▾ transcript'}</button>
                       {t.segments.length === 1 && byId[t.segments[0].sessionId]?.audioId && (
                         <button className="btn ghost sm" onClick={() => setEditing(i)}>✂ Edit</button>
+                      )}
+                      {t.segments.length > 1 && (
+                        <button className="btn ghost sm" title="Split back into one track per clip" onClick={() => ungroup(i)}>⤯ Ungroup</button>
+                      )}
+                      {i < tracks.length - 1 && (
+                        <button className="btn ghost sm" title="Merge with the next track" onClick={() => mergeDown(i)}>⧉ Merge ↓</button>
                       )}
                       {m.firstId && <button className="btn ghost sm" onClick={() => navigate('session', { param: m.firstId })}>Open</button>}
                     </div>
