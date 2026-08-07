@@ -1,6 +1,7 @@
 // Layout chrome: Sidebar nav, DeviceBar (always-visible I/O devices + live mic
 // level), and the global RecordingIndicator banner.
 
+import { useEffect } from 'react';
 import { useRecorder } from '../lib/recorderContext.jsx';
 import { useStore } from '../lib/store.jsx';
 import { useMediaDevices } from '../hooks/useMediaDevices.js';
@@ -24,6 +25,15 @@ const NAV = [
 
 export function Sidebar({ route, navigate, open, onClose }) {
   const go = (id) => { navigate(id); onClose?.(); };
+  // While the mobile drawer is open, Escape closes it and the page behind is scroll-locked.
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => e.key === 'Escape' && onClose?.();
+    window.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
+  }, [open, onClose]);
   return (
     <>
       {open && <button className="nav-backdrop" aria-label="Close menu" onClick={onClose} />}

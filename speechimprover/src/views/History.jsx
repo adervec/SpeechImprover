@@ -16,6 +16,7 @@ export default function History({ navigate }) {
   const [playingId, setPlayingId] = useState(null);
   const [confirmDel, setConfirmDel] = useState(null);
   const [quota, setQuota] = useState(null);
+  const [selected, setSelected] = useState(() => new Set());
 
   useEffect(() => () => {
     Object.values(audioUrls).forEach((u) => URL.revokeObjectURL(u));
@@ -124,6 +125,38 @@ export default function History({ navigate }) {
     });
   }
 
+  function toggleSelect(id) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+  function toggleSelectAll() {
+    setSelected((prev) => {
+      const ids = sorted.map((s) => s.id);
+      const allSel = ids.length > 0 && ids.every((id) => prev.has(id));
+      const next = new Set(prev);
+      ids.forEach((id) => (allSel ? next.delete(id) : next.add(id)));
+      return next;
+    });
+  }
+  async function bulkDelete() {
+    const ids = [...selected];
+    const removed = [];
+    for (const id of ids) { const r = await removeSession(id); if (r) removed.push(r); }
+    setSelected(new Set());
+    toast(`${removed.length} session${removed.length === 1 ? '' : 's'} deleted.`, {
+      action: { label: 'Undo', onClick: () => removed.forEach((r) => restoreSession(r.record, r.blob, r.mime)) },
+    });
+  }
+  async function bulkPurge() {
+    const ids = [...selected].filter((id) => sessions.find((s) => s.id === id)?.audioId);
+    for (const id of ids) await purgeAudio(id);
+    setSelected(new Set());
+    toast(`Purged audio for ${ids.length} recording${ids.length === 1 ? '' : 's'}.`);
+  }
+
   if (!sessions.length) {
     return <EmptyState icon="🕘" title="No sessions yet" action={<button className="btn primary" onClick={() => navigate('practice')}>Record one</button>}>Everything you record is historized here by default.</EmptyState>;
   }
@@ -158,6 +191,17 @@ export default function History({ navigate }) {
         </p>
       </div>
 
+      {selected.size > 0 && (
+        <div className="card tight row spread" style={{ borderColor: 'var(--accent)' }}>
+          <span className="small">{selected.size} selected.</span>
+          <div className="row">
+            <button className="btn ghost sm" onClick={() => setSelected(new Set())}>Clear</button>
+            <button className="btn ghost sm" onClick={bulkPurge}>🗑 Purge audio</button>
+            <button className="btn danger sm" onClick={bulkDelete}>Delete {selected.size}</button>
+          </div>
+        </div>
+      )}
+
       {compareSel.length === 2 && (
         <div className="card tight row spread" style={{ borderColor: 'var(--accent)' }}>
           <span className="small">2 sessions selected for comparison.</span>
@@ -178,6 +222,7 @@ export default function History({ navigate }) {
         <table className="data">
           <thead>
             <tr>
+              <th style={{ width: 28 }}><input type="checkbox" aria-label="Select all" checked={sorted.length > 0 && sorted.every((s) => selected.has(s.id))} onChange={toggleSelectAll} /></th>
               {th('createdAt', 'When')}
               {th('exerciseTitle', 'Exercise')}
               <th>Mode</th>
@@ -190,7 +235,8 @@ export default function History({ navigate }) {
           <tbody>
             {sorted.map((s) => (
               <Fragment key={s.id}>
-                <tr>
+                <tr style={selected.has(s.id) ? { background: 'color-mix(in srgb, var(--accent) 10%, transparent)' } : undefined}>
+                  <td><input type="checkbox" aria-label="Select session" checked={selected.has(s.id)} onChange={() => toggleSelect(s.id)} /></td>
                   <td className="nowrap small">{formatDateTime(s.createdAt)}</td>
                   <td>{s.exerciseTitle || '—'}{s.notes && <div className="tiny muted" style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>📝 {s.notes}</div>}</td>
                   <td><span className="badge">{s.mode}</span></td>
@@ -212,7 +258,7 @@ export default function History({ navigate }) {
                 </tr>
                 {playingId === s.id && audioUrls[s.id] && (
                   <tr>
-                    <td colSpan={7} style={{ background: 'var(--bg-2)' }}>
+                    <td colSpan={8} style={{ background: 'var(--bg-2)' }}>
                       <RecordingAudio src={audioUrls[s.id]} autoPlay />
                     </td>
                   </tr>

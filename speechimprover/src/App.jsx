@@ -4,6 +4,7 @@ import { DriveSyncProvider } from './lib/driveSync.jsx';
 import { RecorderProvider, useRecorder } from './lib/recorderContext.jsx';
 import { ToastProvider } from './components/ui.jsx';
 import { Sidebar, DeviceBar, RecordingIndicator } from './components/layout.jsx';
+import CommandPalette from './components/CommandPalette.jsx';
 import { useRouter } from './hooks/useRouter.js';
 import { applyTheme } from './styles/themes.js';
 
@@ -100,7 +101,20 @@ function Shell() {
   const { isRecording } = useRecorder();
   const { route, navigate } = useRouter();
   const [navOpen, setNavOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
+
+  // Cmd/Ctrl-K opens the quick-jump palette.
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   // Capture the PWA install event so we can offer an explicit "Install" button.
   useEffect(() => {
@@ -138,6 +152,7 @@ function Shell() {
               <button className="btn ghost sm" onClick={() => window.history.back()} aria-label="Go back">‹ Back</button>
             )}
             <h1 style={{ fontSize: '1.15rem' }}>{TITLES[route.page] ?? 'SpeechImprover'}</h1>
+            <button className="btn ghost sm" onClick={() => setPaletteOpen(true)} title="Quick jump (Ctrl/⌘ K)" aria-label="Quick jump">🔎</button>
             {installPrompt && (
               <button className="btn ghost sm" title="Install as an app" onClick={async () => { installPrompt.prompt(); await installPrompt.userChoice; setInstallPrompt(null); }}>⤓ Install</button>
             )}
@@ -160,6 +175,7 @@ function Shell() {
           </main>
         </div>
       </div>
+      {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} navigate={navigate} />}
     </>
   );
 }

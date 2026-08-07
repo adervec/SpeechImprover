@@ -62,26 +62,33 @@ export function Sparkline({ points = [], width = 120, height = 32, color = 'var(
   );
 }
 
-// seriesList: [{ label, color, points: [{date, value, id}] }]
+// seriesList: [{ label, color, points: [{date, value, id}] }].
+// X is a shared TIME scale so overlaid series with different point counts still
+// line up by date (plotting by array index silently misaligned them). The max
+// point of each series gets a ★ personal-best marker.
 export function LineChart({ seriesList = [], height = 260, yMin = 0, yMax = 100, onPointClick }) {
   const W = 760;
   const H = height;
-  const padL = 38;
+  const padL = 44;
   const padR = 16;
   const padT = 16;
   const padB = 34;
   const plotW = W - padL - padR;
   const plotH = H - padT - padB;
 
-  const maxLen = Math.max(0, ...seriesList.map((s) => s.points.length));
-  if (maxLen < 1) {
+  const allPts = seriesList.flatMap((s) => s.points);
+  if (!allPts.length) {
     return <div className="empty">Not enough data to chart yet.</div>;
   }
-  const xAt = (i, len) => padL + (len <= 1 ? plotW / 2 : (i / (len - 1)) * plotW);
+  const times = allPts.map((p) => new Date(p.date).getTime());
+  const tMin = Math.min(...times);
+  const tMax = Math.max(...times);
+  const xAt = (date) => padL + (tMax === tMin ? plotW / 2 : ((new Date(date).getTime() - tMin) / (tMax - tMin)) * plotW);
   const yAt = (v) => padT + plotH - ((v - yMin) / (yMax - yMin)) * plotH;
 
   const gridLines = [0, 25, 50, 75, 100].filter((g) => g >= yMin && g <= yMax);
-  const labelSeries = seriesList.find((s) => s.points.length === maxLen) || seriesList[0];
+  const labelSeries = seriesList.reduce((a, b) => ((b.points.length > (a?.points.length || 0)) ? b : a), null);
+  const midY = padT + plotH / 2;
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{ display: 'block' }}>
@@ -93,13 +100,14 @@ export function LineChart({ seriesList = [], height = 260, yMin = 0, yMax = 100,
           </text>
         </g>
       ))}
+      <text x={12} y={midY} transform={`rotate(-90 12 ${midY})`} textAnchor="middle" fontSize="10" fill="var(--text-dim)">Score</text>
       {labelSeries?.points.map((p, i) => {
         const len = labelSeries.points.length;
         if (len > 7 && i % Math.ceil(len / 6) !== 0 && i !== len - 1) return null;
         return (
           <text
             key={p.id || i}
-            x={xAt(i, len)}
+            x={xAt(p.date)}
             y={H - 10}
             textAnchor="middle"
             fontSize="10"
@@ -110,27 +118,31 @@ export function LineChart({ seriesList = [], height = 260, yMin = 0, yMax = 100,
         );
       })}
       {seriesList.map((s) => {
-        const len = s.points.length;
         const d = s.points
-          .map((p, i) => `${i === 0 ? 'M' : 'L'}${xAt(i, len).toFixed(1)},${yAt(p.value).toFixed(1)}`)
+          .map((p, i) => `${i === 0 ? 'M' : 'L'}${xAt(p.date).toFixed(1)},${yAt(p.value).toFixed(1)}`)
           .join(' ');
+        const bestVal = s.points.length ? Math.max(...s.points.map((p) => p.value)) : null;
+        const bestIdx = s.points.length > 1 ? s.points.findIndex((p) => p.value === bestVal) : -1;
         return (
           <g key={s.label}>
             <path d={d} fill="none" stroke={s.color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
             {s.points.map((p, i) => (
-              <circle
-                key={p.id || i}
-                cx={xAt(i, len)}
-                cy={yAt(p.value)}
-                r="4"
-                fill={s.color}
-                stroke="var(--surface)"
-                strokeWidth="1.5"
-                style={{ cursor: onPointClick ? 'pointer' : 'default' }}
-                onClick={() => onPointClick && onPointClick(p)}
-              >
-                <title>{`${formatDate(p.date)}: ${Math.round(p.value)}`}</title>
-              </circle>
+              <g key={p.id || i}>
+                {i === bestIdx && (
+                  <text x={xAt(p.date)} y={yAt(p.value) - 8} textAnchor="middle" fontSize="12" fill={s.color}>★</text>
+                )}
+                <circle cx={xAt(p.date)} cy={yAt(p.value)} r="4" fill={s.color} stroke="var(--surface)" strokeWidth="1.5" />
+                <circle
+                  cx={xAt(p.date)}
+                  cy={yAt(p.value)}
+                  r="10"
+                  fill="transparent"
+                  style={{ cursor: onPointClick ? 'pointer' : 'default' }}
+                  onClick={() => onPointClick && onPointClick(p)}
+                >
+                  <title>{`${formatDate(p.date)}: ${Math.round(p.value)}${i === bestIdx ? ' · personal best' : ''}`}</title>
+                </circle>
+              </g>
             ))}
           </g>
         );
