@@ -38,6 +38,7 @@ const DEFAULT_SETTINGS = {
   inputDeviceId: '',
   outputDeviceId: '',
   recognitionEnabled: true,
+  weeklyGoal: 3,
 };
 
 function loadLocal(key, fallback) {

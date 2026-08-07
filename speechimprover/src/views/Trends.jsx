@@ -8,21 +8,55 @@ import { trendSeries, trendDelta, subsetOptions } from '../lib/aggregate.js';
 const PALETTE = ['var(--accent)', 'var(--accent-2)', 'var(--good)', 'var(--warn)', 'var(--bad)'];
 const METRICS = [{ key: 'overall', label: 'Overall' }, ...ATTRIBUTES.map((a) => ({ key: a.key, label: a.label }))];
 
+const RANGES = [
+  { key: 'all', label: 'All time' },
+  { key: '7', label: 'Last 7 days' },
+  { key: '30', label: 'Last 30 days' },
+  { key: '90', label: 'Last 90 days' },
+];
+
 export default function Trends({ navigate }) {
   const { sessions } = useStore();
   const [subset, setSubset] = useState('all');
+  const [range, setRange] = useState('all');
   const [selected, setSelected] = useState(['overall']);
 
   const opts = useMemo(() => subsetOptions(sessions), [sessions]);
 
   const filterFn = useMemo(() => {
-    if (subset === 'all') return null;
-    const [kind, value] = subset.split(':');
-    if (kind === 'mode') return (s) => s.mode === value;
-    if (kind === 'type') return (s) => s.type === value;
-    if (kind === 'exercise') return (s) => s.exerciseId === value;
-    return null;
-  }, [subset]);
+    let subsetFn = null;
+    if (subset !== 'all') {
+      const [kind, value] = subset.split(':');
+      if (kind === 'mode') subsetFn = (s) => s.mode === value;
+      else if (kind === 'type') subsetFn = (s) => s.type === value;
+      else if (kind === 'exercise') subsetFn = (s) => s.exerciseId === value;
+    }
+    const cutoff = range === 'all' ? null : new Date().getTime() - Number(range) * 86400000;
+    if (!subsetFn && cutoff == null) return null;
+    return (s) => {
+      if (subsetFn && !subsetFn(s)) return false;
+      if (cutoff != null && new Date(s.createdAt).getTime() < cutoff) return false;
+      return true;
+    };
+  }, [subset, range]);
+
+  function exportCsv() {
+    const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const rows = [['date', 'exercise', 'mode', 'overall', 'alignment', 'durationSec', 'transcript']];
+    for (const s of [...sessions].sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1))) {
+      rows.push([
+        s.createdAt, s.exerciseTitle || '', s.mode || '', s.overall ?? '',
+        s.distances?.alignment ?? '', Math.round(s.metrics?.durationSec ?? s.durationSec ?? 0),
+        (s.transcript || '').replace(/\s+/g, ' ').trim(),
+      ]);
+    }
+    const csv = rows.map((r) => r.map(esc).join(',')).join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = 'speechimprover-sessions.csv';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }
 
   const seriesList = useMemo(
     () =>
@@ -49,9 +83,12 @@ export default function Trends({ navigate }) {
   return (
     <div className="stack">
       <div className="card">
-        <div className="card-head"><h3>Filter a coherent subset</h3></div>
-        <div className="row wrap">
-          <label className="field" style={{ minWidth: 260 }}>
+        <div className="card-head">
+          <h3>Filter a coherent subset</h3>
+          <button className="btn ghost sm" onClick={exportCsv} title="Download all sessions as CSV">⬇ Export CSV</button>
+        </div>
+        <div className="row wrap" style={{ gap: 14 }}>
+          <label className="field" style={{ minWidth: 260, flex: 1 }}>
             Subset
             <select value={subset} onChange={(e) => setSubset(e.target.value)}>
               <option value="all">All sessions ({sessions.length})</option>
@@ -64,6 +101,12 @@ export default function Trends({ navigate }) {
               <optgroup label="By exercise">
                 {opts.exercises.map((e) => <option key={e.id} value={`exercise:${e.id}`}>{e.title}</option>)}
               </optgroup>
+            </select>
+          </label>
+          <label className="field" style={{ minWidth: 180 }}>
+            Date range
+            <select value={range} onChange={(e) => setRange(e.target.value)}>
+              {RANGES.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
             </select>
           </label>
         </div>

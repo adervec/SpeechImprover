@@ -100,6 +100,19 @@ function Shell() {
   const { isRecording } = useRecorder();
   const { route, navigate } = useRouter();
   const [navOpen, setNavOpen] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState(null);
+
+  // Capture the PWA install event so we can offer an explicit "Install" button.
+  useEffect(() => {
+    const onPrompt = (e) => { e.preventDefault(); setInstallPrompt(e); };
+    const onInstalled = () => setInstallPrompt(null);
+    window.addEventListener('beforeinstallprompt', onPrompt);
+    window.addEventListener('appinstalled', onInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onPrompt);
+      window.removeEventListener('appinstalled', onInstalled);
+    };
+  }, []);
 
   useEffect(() => {
     applyTheme(settings.theme);
@@ -125,6 +138,9 @@ function Shell() {
               <button className="btn ghost sm" onClick={() => window.history.back()} aria-label="Go back">‹ Back</button>
             )}
             <h1 style={{ fontSize: '1.15rem' }}>{TITLES[route.page] ?? 'SpeechImprover'}</h1>
+            {installPrompt && (
+              <button className="btn ghost sm" title="Install as an app" onClick={async () => { installPrompt.prompt(); await installPrompt.userChoice; setInstallPrompt(null); }}>⤓ Install</button>
+            )}
             <DeviceBar />
           </header>
           <main className="content">

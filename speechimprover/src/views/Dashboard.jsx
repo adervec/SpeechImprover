@@ -13,12 +13,14 @@ import {
 import { formatDuration, relativeDay } from '../lib/format.js';
 
 export default function Dashboard({ navigate }) {
-  const { sessions, profile } = useStore();
+  const { sessions, profile, settings, updateSettings } = useStore();
+  const goal = settings.weeklyGoal || 3;
 
   const stats = useMemo(() => {
     const recent = sessions.slice(0, 8);
     const series = trendSeries(sessions, 'overall');
     const overalls = sessions.filter((s) => s.overall != null).map((s) => s.overall);
+    const weekStart = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - d.getDay()); return d.getTime(); })();
     return {
       streak: computeStreak(sessions),
       avg: averageOverall(recent),
@@ -27,6 +29,7 @@ export default function Dashboard({ navigate }) {
       weak: weakestAttributes(sessions, 3),
       series,
       weekPct: weekDelta(sessions),
+      thisWeek: sessions.filter((s) => new Date(s.createdAt).getTime() >= weekStart).length,
     };
   }, [sessions]);
 
@@ -70,6 +73,25 @@ export default function Dashboard({ navigate }) {
             {stats.weekPct == null ? '—' : `${stats.weekPct >= 0 ? '+' : ''}${stats.weekPct}%`}
           </span>
           <span className="lbl">This week vs last</span>
+        </div>
+      </div>
+
+      <div className="card tight">
+        <div className="row spread">
+          <div>
+            <b>Weekly goal</b>
+            <div className="tiny muted">
+              {stats.thisWeek} of {goal} session{goal === 1 ? '' : 's'} this week{stats.thisWeek >= goal ? ' · reached 🎉' : ` · ${goal - stats.thisWeek} to go`}
+            </div>
+          </div>
+          <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+            <button className="btn ghost sm" aria-label="Lower goal" onClick={() => updateSettings({ weeklyGoal: Math.max(1, goal - 1) })}>−</button>
+            <span className="mono" style={{ minWidth: 18, textAlign: 'center' }}>{goal}</span>
+            <button className="btn ghost sm" aria-label="Raise goal" onClick={() => updateSettings({ weeklyGoal: goal + 1 })}>＋</button>
+          </div>
+        </div>
+        <div className="attr-bar-track" style={{ marginTop: 10 }}>
+          <div className="attr-bar-fill" style={{ width: `${Math.min(100, (stats.thisWeek / goal) * 100)}%`, background: stats.thisWeek >= goal ? 'var(--good)' : 'var(--accent)' }} />
         </div>
       </div>
 
