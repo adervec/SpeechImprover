@@ -147,6 +147,11 @@ h3 {
   cursor: pointer;
   border: 1px solid transparent;
   transition: all 0.15s ease;
+  /* rendered as <button> for keyboard access — reset native button chrome */
+  background: none;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
 }
 .nav-link:hover {
   background: var(--surface);
@@ -369,6 +374,11 @@ h3 {
 .btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+/* Visible keyboard focus app-wide (mouse clicks don't trigger :focus-visible). */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .btn.primary {
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
@@ -634,6 +644,9 @@ table.data tr:hover td {
   bottom: 22px;
   left: 50%;
   transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
   background: var(--surface-2);
   border: 1px solid var(--border);
   color: var(--text);
@@ -643,6 +656,20 @@ table.data tr:hover td {
   z-index: 300;
   font-size: 0.88rem;
   animation: slideUp 0.2s ease;
+  max-width: min(92vw, 520px);
+}
+.toast.error { border-color: var(--bad); }
+.toast.success { border-color: var(--good); }
+.toast-action {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-weight: 700;
+  font-family: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+  padding: 0;
+  white-space: nowrap;
 }
 @keyframes slideUp {
   from {

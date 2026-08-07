@@ -8,7 +8,7 @@ import {
   averageOverall,
   weakestAttributes,
   trendSeries,
-  trendDelta,
+  weekDelta,
 } from '../lib/aggregate.js';
 import { formatDuration, relativeDay } from '../lib/format.js';
 
@@ -18,13 +18,15 @@ export default function Dashboard({ navigate }) {
   const stats = useMemo(() => {
     const recent = sessions.slice(0, 8);
     const series = trendSeries(sessions, 'overall');
+    const overalls = sessions.filter((s) => s.overall != null).map((s) => s.overall);
     return {
       streak: computeStreak(sessions),
       avg: averageOverall(recent),
+      best: overalls.length ? Math.max(...overalls) : null,
       latest: sessions[0],
       weak: weakestAttributes(sessions, 3),
       series,
-      delta: trendDelta(series),
+      weekPct: weekDelta(sessions),
     };
   }, [sessions]);
 
@@ -57,13 +59,17 @@ export default function Dashboard({ navigate }) {
 
       <div className="grid cols-4">
         <div className="card stat"><span className="big">{sessions.length}</span><span className="lbl">Sessions logged</span></div>
-        <div className="card stat"><span className="big" style={{ color: 'var(--accent)' }}>{stats.streak}🔥</span><span className="lbl">Day streak</span></div>
-        <div className="card stat"><span className="big">{stats.avg}</span><span className="lbl">Avg score (recent)</span></div>
-        <div className="card stat">
-          <span className="big" style={{ color: stats.delta >= 0 ? 'var(--good)' : 'var(--bad)' }}>
-            {stats.delta >= 0 ? '+' : ''}{stats.delta}
+        <div className="card stat" title="Consecutive days with at least one recording."><span className="big" style={{ color: 'var(--accent)' }}>{stats.streak}🔥</span><span className="lbl">Day streak</span></div>
+        <div className="card stat" title="Average score across your last 8 scored sessions (0–100).">
+          <span className="big">{stats.avg}</span>
+          <span className="lbl">Avg score (recent)</span>
+          {stats.best != null && <span className="tiny muted">🏅 best {stats.best}</span>}
+        </div>
+        <div className="card stat" title="This week's average score vs last week's.">
+          <span className="big" style={{ color: stats.weekPct == null ? 'var(--text-dim)' : stats.weekPct >= 0 ? 'var(--good)' : 'var(--bad)' }}>
+            {stats.weekPct == null ? '—' : `${stats.weekPct >= 0 ? '+' : ''}${stats.weekPct}%`}
           </span>
-          <span className="lbl">Overall trend</span>
+          <span className="lbl">This week vs last</span>
         </div>
       </div>
 
@@ -95,7 +101,7 @@ export default function Dashboard({ navigate }) {
             <span className="tiny muted">your weakest attributes</span>
           </div>
           <div className="stack" style={{ gap: 10 }}>
-            {stats.weak.map((w) => (
+            {stats.weak.length ? stats.weak.map((w) => (
               <div className="row spread" key={w.key}>
                 <div>
                   <b><AttrLabel attrKey={w.key} /></b>
@@ -106,7 +112,9 @@ export default function Dashboard({ navigate }) {
                   <button className="btn sm" onClick={() => navigate('exercises', { query: { focus: w.key } })}>Train</button>
                 </div>
               </div>
-            ))}
+            )) : (
+              <p className="muted small">Record a scored reading or free-speaking take and your weakest attributes will surface here.</p>
+            )}
           </div>
           <div className="divider" />
           <button className="btn block" onClick={() => navigate('exercises', { query: { generate: '1' } })}>

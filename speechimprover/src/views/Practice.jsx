@@ -108,6 +108,8 @@ export default function Practice({ route, navigate }) {
   const [pendingRec, setPendingRec] = useState(null); // finished take awaiting submit/restart/abandon
   const [showModel, setShowModel] = useState(true);
   const [notes, setNotes] = useState('');
+  const [starting, setStarting] = useState(false);
+  const [countdown, setCountdown] = useState(0); // 3..1 pre-roll, 0 = not counting
   const audioUrlRef = useRef(null);
   const pendingUrlRef = useRef(null);
 
@@ -116,6 +118,36 @@ export default function Practice({ route, navigate }) {
     if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
     if (pendingUrlRef.current) URL.revokeObjectURL(pendingUrlRef.current);
   }, []);
+
+  // 3-2-1 pre-roll, then actually start capturing. The mic is already warm
+  // (monitor opened in handleStart) so the first word isn't clipped.
+  useEffect(() => {
+    if (!countdown) return undefined;
+    const t = setTimeout(async () => {
+      if (countdown > 1) { setCountdown((c) => c - 1); return; }
+      setCountdown(0);
+      setStarting(true);
+      const ok = await recorder.startRecording(settings.inputDeviceId, { recognition: recognitionOn });
+      setStarting(false);
+      if (ok) setPhase('recording');
+    }, 700);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [countdown]);
+
+  // Hands-free Space to start/stop (ignored while typing or when a control is focused).
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.code !== 'Space') return;
+      const tag = e.target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON' || tag === 'A' || e.target?.isContentEditable) return;
+      if (phase === 'setup' && !countdown && !starting) { e.preventDefault(); handleStart(); }
+      else if (phase === 'recording') { e.preventDefault(); handleStop(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, countdown, starting]);
 
   // Selected project. A project with `text` is a "reading" project — recorded a
   // passage at a time, tracking a position through the whole work.
@@ -145,9 +177,15 @@ export default function Practice({ route, navigate }) {
   const progDone = progSteps.filter((s) => s.status === 'done').length;
   const nextPendingIdx = progSteps.findIndex((s) => s.status === 'pending');
 
-  async function handleStart() {
-    await recorder.startRecording(settings.inputDeviceId, { recognition: recognitionOn });
-    setPhase('recording');
+  function handleStart() {
+    if (starting || countdown) return;
+    // Warm the mic while the pre-roll counts down (see countdown effect).
+    recorder.startMonitor(settings.inputDeviceId);
+    setCountdown(3);
+  }
+  function cancelCountdown() {
+    setCountdown(0);
+    recorder.stopMonitor();
   }
 
   // Stop the mic and hold the take for review — no analysis yet.
@@ -219,6 +257,10 @@ export default function Practice({ route, navigate }) {
           distances: analysis.distances,
         };
       }
+      // Celebrate a new personal best (only once there's a prior scored take to beat).
+      const priorFull = sessions.filter((s) => s.assessment === 'full' && s.overall != null);
+      const isNewBest = session.assessment === 'full' && analysis.overall != null
+        && priorFull.length > 0 && analysis.overall > Math.max(...priorFull.map((s) => s.overall));
       const saved = await addSession(session, rec.blob, rec.mime);
       if (isTechnique) {
         recordTechniqueResult(activeExercise.technique.id, activeExercise.technique.stageId, {
@@ -239,6 +281,7 @@ export default function Practice({ route, navigate }) {
       setResult({ session: saved, audioUrl: audioUrlRef.current });
       setNotes('');
       setPhase('result');
+      if (isNewBest) toast(`🎉 New personal best — ${analysis.overall}!`, { type: 'success' });
     } catch (e) {
       toast(`Analysis failed: ${e.message || e}`);
       setPhase('review'); // keep the take so they can retry or abandon
@@ -543,7 +586,12 @@ export default function Practice({ route, navigate }) {
       <div className="card">
         <div className="card-head">
           <h3>{recording ? 'Recording in progress' : 'Your prompt'}</h3>
-          {recording && <span className="badge needs-work">● LIVE · {formatDuration(recorder.elapsedMs / 1000)}</span>}
+          {recording && (
+            <span className="badge needs-work" role="status" aria-live="polite">
+              ● LIVE · {formatDuration(recorder.elapsedMs / 1000)}
+              {activeExercise.durationSec ? ` / ${formatDuration(activeExercise.durationSec)} target` : ''}
+            </span>
+          )}
         </div>
         {activeExercise.instructions && !recording && (
           <p className="muted small" style={{ marginBottom: 12 }}>{activeExercise.instructions}</p>
@@ -556,6 +604,10 @@ export default function Practice({ route, navigate }) {
 
         {recording && (
           <div className="card tight" style={{ marginTop: 14, background: 'var(--bg-2)' }}>
+            <div className="mic-meter" title="Live input level" style={{ marginBottom: 10 }}>
+              <span className="mic-dot live" style={{ background: 'var(--rec)' }} />
+              <div className="mic-meter-track"><div className="mic-meter-fill" style={{ width: `${Math.round(recorder.level * 100)}%` }} /></div>
+            </div>
             <div className="tag" style={{ marginBottom: 6 }}>Live transcript</div>
             <p style={{ minHeight: 40 }}>
               {recorder.finalText} <span className="muted">{recorder.interim}</span>
@@ -569,18 +621,27 @@ export default function Practice({ route, navigate }) {
           </div>
         )}
 
-        {recorder.error && <p className="small" style={{ color: 'var(--bad)', marginTop: 10 }}>⚠️ {recorder.error}</p>}
+        {recorder.error && (
+          <p className="small" style={{ color: 'var(--bad)', marginTop: 10 }} role="alert">
+            ⚠️ {recorder.error}
+            <br /><span className="muted">Allow the microphone via your browser's address-bar icon, then press Start again.</span>
+          </p>
+        )}
 
         <div className="row" style={{ marginTop: 18 }}>
-          {!recording ? (
-            <button className="btn rec lg" onClick={handleStart}>● Start recording</button>
+          {recording ? (
+            <button className="btn lg" onClick={handleStop}>■ Stop &amp; analyze</button>
+          ) : countdown ? (
+            <button className="btn rec lg" onClick={cancelCountdown}>Starting in {countdown}… · cancel</button>
           ) : (
-            <button className="btn lg" onClick={handleStop}>■ Stop & analyze</button>
+            <button className="btn rec lg" onClick={handleStart} disabled={starting}>
+              {starting ? 'Starting…' : '● Start recording'}
+            </button>
           )}
           <span className="small muted">
             {recording
-              ? 'Your microphone is live — speak naturally. The red banner above confirms recording.'
-              : 'Check your input device and the mic level meter in the top bar before you start.'}
+              ? 'Speak naturally — press Space or Stop when done.'
+              : 'Press Space or Start. A 3-2-1 pre-roll warms the mic so your first word isn’t clipped.'}
           </span>
         </div>
       </div>

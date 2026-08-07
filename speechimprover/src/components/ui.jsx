@@ -2,7 +2,7 @@
 /* eslint-disable react-refresh/only-export-components -- this module intentionally
    ships UI components alongside the toast hook/provider. */
 
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { ATTRIBUTES, ATTRIBUTE_MAP } from '../lib/analysis/attributes.js';
 import { scoreBand } from '../lib/format.js';
 
@@ -70,14 +70,23 @@ export function AttrLabel({ attrKey }) {
 }
 
 export function Modal({ title, onClose, children, footer, wide }) {
+  const dialogRef = useRef(null);
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose?.();
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    // Move focus into the dialog and lock background scroll while open.
+    // ponytail: initial focus + scroll-lock, not a full tab-trap — add one if AT users need it.
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    dialogRef.current?.focus();
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
   }, [onClose]);
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}>
-      <div className="modal" style={wide ? { width: 'min(920px, 100%)' } : undefined} role="dialog" aria-modal="true">
+      <div ref={dialogRef} tabIndex={-1} className="modal" style={wide ? { width: 'min(920px, 100%)' } : undefined} role="dialog" aria-modal="true">
         {title && (
           <div className="card-head" style={{ marginBottom: 18 }}>
             <h2>{title}</h2>
@@ -103,17 +112,36 @@ export function EmptyState({ icon = '🎙️', title, children, action }) {
 }
 
 // ---- toast ----
+// toast(text) or toast(text, { type: 'error'|'success', action: { label, onClick }, duration }).
+// An action toast (e.g. Undo) lingers longer; screen readers get it via aria-live.
 const ToastCtx = createContext(null);
 export function ToastProvider({ children }) {
-  const [msg, setMsg] = useState(null);
-  const toast = useCallback((text) => {
-    setMsg(text);
-    setTimeout(() => setMsg((m) => (m === text ? null : m)), 2600);
+  const [cur, setCur] = useState(null); // { text, type, action }
+  const timerRef = useRef(null);
+  const dismiss = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setCur(null);
+  }, []);
+  const toast = useCallback((text, opts = {}) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    const t = { text, type: opts.type || null, action: opts.action || null };
+    setCur(t);
+    const dur = opts.duration || (t.action ? 6000 : 2600);
+    timerRef.current = setTimeout(() => setCur((m) => (m === t ? null : m)), dur);
   }, []);
   return (
     <ToastCtx.Provider value={toast}>
       {children}
-      {msg && <div className="toast">{msg}</div>}
+      {cur && (
+        <div className={`toast ${cur.type || ''}`} role="status" aria-live="polite">
+          <span>{cur.text}</span>
+          {cur.action && (
+            <button className="toast-action" onClick={() => { cur.action.onClick(); dismiss(); }}>
+              {cur.action.label}
+            </button>
+          )}
+        </div>
+      )}
     </ToastCtx.Provider>
   );
 }

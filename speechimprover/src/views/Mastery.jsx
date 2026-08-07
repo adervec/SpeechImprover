@@ -95,7 +95,10 @@ export default function Mastery({ navigate }) {
     navigate('practice', { query: { technique: techId, stage: String(idx) } });
   }
 
-  const pctToNext = status.nextAt ? Math.min(100, (status.xp / status.nextAt) * 100) : 100;
+  // Progress *within* the current level (empties right after leveling up), not total XP / next.
+  const pctToNext = status.nextAt != null
+    ? Math.min(100, Math.max(0, ((status.xp - status.levelAt) / (status.nextAt - status.levelAt)) * 100))
+    : 100;
 
   return (
     <div className="stack">

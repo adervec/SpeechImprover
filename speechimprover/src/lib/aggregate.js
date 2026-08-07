@@ -75,6 +75,38 @@ export function trendDelta(series) {
   return series[series.length - 1].value - series[0].value;
 }
 
+// Signed % change of this week's average overall score vs last week's.
+// null when either week has no scored session (so the UI can show "—" honestly).
+export function weekDelta(sessions, now = new Date()) {
+  const DAY = 86400000;
+  const thisWeek = new Date(now);
+  thisWeek.setHours(0, 0, 0, 0);
+  thisWeek.setDate(thisWeek.getDate() - thisWeek.getDay()); // back to Sunday
+  const thisStart = thisWeek.getTime();
+  const lastStart = thisStart - 7 * DAY;
+  const avgIn = (from, to) => {
+    const vals = sessions
+      .filter((s) => s.overall != null)
+      .filter((s) => { const t = new Date(s.createdAt).getTime(); return t >= from && t < to; })
+      .map((s) => s.overall);
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+  };
+  const thisAvg = avgIn(thisStart, Infinity);
+  const lastAvg = avgIn(lastStart, thisStart);
+  if (thisAvg == null || lastAvg == null || lastAvg === 0) return null;
+  return Math.round(((thisAvg - lastAvg) / lastAvg) * 100);
+}
+
+// Runnable self-check for the week-over-week math.
+export function demoWeekDelta() {
+  const now = new Date('2026-08-06T12:00:00'); // Thursday; week starts Sun 2026-08-02
+  const mk = (d, overall) => ({ createdAt: d, overall });
+  const d = weekDelta([mk('2026-08-04T10:00:00', 80), mk('2026-07-29T10:00:00', 60)], now);
+  console.assert(d === 33, `weekDelta expected 33, got ${d}`); // (80-60)/60
+  console.assert(weekDelta([mk('2026-08-04T10:00:00', 80)], now) === null, 'null without prior week');
+  return d;
+}
+
 // ---- GitHub-style contribution grid (practice activity heatmap) ----
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 

@@ -428,5 +428,5 @@ export function masteryStatus(progress = {}) {
     if (xp >= LEVELS[i].at) { level = i; title = LEVELS[i].title; }
   }
   const nextAt = level + 1 < LEVELS.length ? LEVELS[level + 1].at : null;
-  return { xp, totalStages: TOTAL_STAGES, level, title, nextAt };
+  return { xp, totalStages: TOTAL_STAGES, level, title, nextAt, levelAt: LEVELS[level].at };
 }

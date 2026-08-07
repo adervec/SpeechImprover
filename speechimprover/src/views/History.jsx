@@ -5,18 +5,26 @@ import { formatDateTime, formatBytes } from '../lib/format.js';
 import RecordingAudio from '../components/RecordingAudio.jsx';
 
 export default function History({ navigate }) {
-  const { sessions, removeSession, purgeAudio, getAudioBlob } = useStore();
+  const { sessions, removeSession, restoreSession, purgeAudio, getAudioBlob, updateSession } = useStore();
   const toast = useToast();
   const [search, setSearch] = useState('');
   const [modeFilter, setModeFilter] = useState('all');
+  const [favOnly, setFavOnly] = useState(false);
+  const [sort, setSort] = useState({ key: 'createdAt', dir: 'desc' });
   const [compareSel, setCompareSel] = useState([]);
   const [audioUrls, setAudioUrls] = useState({});
   const [playingId, setPlayingId] = useState(null);
   const [confirmDel, setConfirmDel] = useState(null);
+  const [quota, setQuota] = useState(null);
 
   useEffect(() => () => {
     Object.values(audioUrls).forEach((u) => URL.revokeObjectURL(u));
   }, [audioUrls]);
+
+  // Browser storage headroom, so "purge to free space" has a target the user can gauge.
+  useEffect(() => {
+    navigator.storage?.estimate?.().then(setQuota).catch(() => {});
+  }, [sessions.length]);
 
   const modes = useMemo(() => [...new Set(sessions.map((s) => s.mode).filter(Boolean))], [sessions]);
   const audioCount = useMemo(() => sessions.filter((s) => s.audioId).length, [sessions]);
@@ -26,6 +34,7 @@ export default function History({ navigate }) {
     const q = search.trim().toLowerCase();
     return sessions.filter((s) => {
       if (modeFilter !== 'all' && s.mode !== modeFilter) return false;
+      if (favOnly && !s.favorite) return false;
       if (!q) return true;
       return (
         (s.exerciseTitle || '').toLowerCase().includes(q) ||
@@ -33,7 +42,37 @@ export default function History({ navigate }) {
         (s.transcript || '').toLowerCase().includes(q)
       );
     });
-  }, [sessions, search, modeFilter]);
+  }, [sessions, search, modeFilter, favOnly]);
+
+  const sorted = useMemo(() => {
+    const get = (s) => (sort.key === 'alignment' ? (s.distances?.alignment ?? null)
+      : sort.key === 'audioBytes' ? (s.audioBytes || 0)
+        : s[sort.key]);
+    const arr = [...filtered];
+    arr.sort((a, b) => {
+      let av = get(a); let bv = get(b);
+      let c;
+      if (sort.key === 'createdAt' || sort.key === 'exerciseTitle') {
+        c = String(av ?? '').localeCompare(String(bv ?? ''));
+      } else {
+        av = av == null ? -Infinity : av; bv = bv == null ? -Infinity : bv;
+        c = av - bv;
+      }
+      return sort.dir === 'asc' ? c : -c;
+    });
+    return arr;
+  }, [filtered, sort]);
+
+  function sortBy(key) {
+    setSort((s) => (s.key === key
+      ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' }
+      : { key, dir: key === 'exerciseTitle' ? 'asc' : 'desc' }));
+  }
+  const th = (k, label, style) => (
+    <th key={k} style={{ cursor: 'pointer', userSelect: 'none', ...style }} onClick={() => sortBy(k)} aria-sort={sort.key === k ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+      {label}{sort.key === k ? (sort.dir === 'asc' ? ' ▲' : ' ▼') : ''}
+    </th>
+  );
 
   async function togglePlay(s) {
     if (!s.audioId) return;
@@ -78,9 +117,11 @@ export default function History({ navigate }) {
     toast('Audio purged — scores kept.');
   }
   async function doDelete(s) {
-    await removeSession(s.id);
+    const removed = await removeSession(s.id);
     setConfirmDel(null);
-    toast('Session deleted.');
+    toast('Session deleted.', {
+      action: { label: 'Undo', onClick: () => removed && restoreSession(removed.record, removed.blob, removed.mime) },
+    });
   }
 
   if (!sessions.length) {
@@ -95,9 +136,10 @@ export default function History({ navigate }) {
           <div className="pill-group">
             <button className={`pill ${modeFilter === 'all' ? 'active' : ''}`} onClick={() => setModeFilter('all')}>All</button>
             {modes.map((m) => <button key={m} className={`pill ${modeFilter === m ? 'active' : ''}`} onClick={() => setModeFilter(m)}>{m}</button>)}
+            <button className={`pill ${favOnly ? 'active' : ''}`} onClick={() => setFavOnly((v) => !v)} title="Show only favorites">★ Favorites</button>
           </div>
         </div>
-        <span className="small muted">{filtered.length} of {sessions.length}</span>
+        <span className="small muted">{sorted.length} of {sessions.length}</span>
       </div>
 
       <div className="card tight">
@@ -106,7 +148,12 @@ export default function History({ navigate }) {
           <div className="stat"><span className="big" style={{ fontSize: '1.3rem' }}>{audioCount}</span><span className="lbl">With audio</span></div>
           <div className="stat"><span className="big" style={{ fontSize: '1.3rem' }}>{formatBytes(totalAudio)}</span><span className="lbl">Audio stored</span></div>
         </div>
-        <p className="tiny muted" style={{ margin: '10px 0 0' }}>
+        {quota?.quota > 0 && (
+          <p className="tiny muted" style={{ margin: '10px 0 0' }}>
+            Browser storage: <b>{formatBytes(quota.usage || 0)}</b> of {formatBytes(quota.quota)} used ({Math.round((quota.usage / quota.quota) * 100)}%).
+          </p>
+        )}
+        <p className="tiny muted" style={{ margin: '6px 0 0' }}>
           Play, download or delete any recording below. Bulk export/import and one-click purge live in <a onClick={() => navigate('settings')} style={{ cursor: 'pointer', color: 'var(--accent)' }}>Settings → Data &amp; storage</a>.
         </p>
       </div>
@@ -121,13 +168,27 @@ export default function History({ navigate }) {
         </div>
       )}
 
+      {sorted.length === 0 ? (
+        <EmptyState icon="🔍" title="No sessions match"
+          action={<button className="btn" onClick={() => { setSearch(''); setModeFilter('all'); setFavOnly(false); }}>Clear filters</button>}>
+          Nothing matches your current search and filters.
+        </EmptyState>
+      ) : (
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <table className="data">
           <thead>
-            <tr><th>When</th><th>Exercise</th><th>Mode</th><th>Overall</th><th>Align</th><th>Audio</th><th style={{ textAlign: 'right' }}>Actions</th></tr>
+            <tr>
+              {th('createdAt', 'When')}
+              {th('exerciseTitle', 'Exercise')}
+              <th>Mode</th>
+              {th('overall', 'Overall')}
+              {th('alignment', 'Align')}
+              {th('audioBytes', 'Audio')}
+              <th style={{ textAlign: 'right' }}>Actions</th>
+            </tr>
           </thead>
           <tbody>
-            {filtered.map((s) => (
+            {sorted.map((s) => (
               <Fragment key={s.id}>
                 <tr>
                   <td className="nowrap small">{formatDateTime(s.createdAt)}</td>
@@ -138,6 +199,7 @@ export default function History({ navigate }) {
                   <td className="small nowrap">{s.audioId ? formatBytes(s.audioBytes) : <span className="muted">purged</span>}</td>
                   <td style={{ textAlign: 'right' }}>
                     <div className="row" style={{ justifyContent: 'flex-end', gap: 4 }}>
+                      <button className="btn ghost sm" title={s.favorite ? 'Unfavorite' : 'Favorite'} aria-pressed={!!s.favorite} style={{ color: s.favorite ? 'var(--warn)' : undefined }} onClick={() => updateSession(s.id, { favorite: !s.favorite })}>{s.favorite ? '★' : '☆'}</button>
                       {s.audioId && <button className="btn ghost sm" onClick={() => togglePlay(s)}>{playingId === s.id ? '❚❚' : '▶'}</button>}
                       {s.audioId && <button className="btn ghost sm" title="Download audio" onClick={() => downloadAudio(s)}>⬇</button>}
                       <button className="btn ghost sm" onClick={() => navigate('session', { param: s.id })}>Open</button>
@@ -160,6 +222,7 @@ export default function History({ navigate }) {
           </tbody>
         </table>
       </div>
+      )}
 
       {confirmDel && (
         <Modal

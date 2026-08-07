@@ -45,19 +45,21 @@ export function Sidebar({ route, navigate, open, onClose }) {
         </div>
       </div>
       {NAV.map((n) => (
-        <a
+        <button
+          type="button"
           key={n.id}
           className={`nav-link ${route.page === n.id ? 'active' : ''}`}
+          aria-current={route.page === n.id ? 'page' : undefined}
           onClick={() => go(n.id)}
         >
           <span className="ico">{n.icon}</span>
           {n.label}
-        </a>
+        </button>
       ))}
       <div className="nav-spacer" />
-      <a className="nav-link primary-cta" onClick={() => go('practice')} style={{ color: 'var(--accent)' }}>
+      <button type="button" className="nav-link primary-cta" onClick={() => go('practice')} style={{ color: 'var(--accent)' }}>
         <span className="ico">＋</span>New session
-      </a>
+      </button>
       </nav>
     </>
   );

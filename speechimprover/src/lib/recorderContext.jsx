@@ -232,9 +232,11 @@ export function RecorderProvider({ children }) {
       }, 200);
 
       setMode('recording');
+      return true;
     } catch (e) {
       setError(e.message || String(e));
       setMode('idle');
+      return false;
     }
   }, [openStream, teardownStream, recognitionSupported, startRecognizer]);
 

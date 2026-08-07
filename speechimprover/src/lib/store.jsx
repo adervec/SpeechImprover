@@ -301,10 +301,26 @@ export function StoreProvider({ children }) {
 
   const removeSession = useCallback(async (id) => {
     const s = sessions.find((x) => x.id === id);
-    if (s?.audioId) await deleteAudio(s.audioId);
+    let blob = null;
+    if (s?.audioId) {
+      const rec = await getAudio(s.audioId); // grab the blob first so a delete is undoable
+      blob = rec?.blob || null;
+      await deleteAudio(s.audioId);
+    }
     await dbDeleteSession(id);
     setSessions((prev) => prev.filter((x) => x.id !== id));
+    return s ? { record: s, blob, mime: s.audioMime } : null;
   }, [sessions]);
+
+  // Re-insert a removed session (with its audio) — powers the Undo toast.
+  const restoreSession = useCallback(async (record, blob, mime) => {
+    if (!record) return;
+    if (blob && record.audioId) await putAudio(record.audioId, blob, mime || record.audioMime || blob.type);
+    await putSession(record);
+    setSessions((prev) => (prev.some((x) => x.id === record.id)
+      ? prev
+      : [record, ...prev].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))));
+  }, []);
 
   const purgeAudio = useCallback(async (id) => {
     const s = sessions.find((x) => x.id === id);
@@ -381,6 +397,7 @@ export function StoreProvider({ children }) {
       addSession,
       updateSession,
       removeSession,
+      restoreSession,
       purgeAudio,
       purgeAllAudio,
       resetAllData,
@@ -393,7 +410,7 @@ export function StoreProvider({ children }) {
       updateProfile, updateSettings, startProgram, completeProgramStep, clearProgram,
       createProject, updateProject, deleteProject,
       recordTechniqueResult, resetMastery, addSession,
-      updateSession, removeSession, purgeAudio, purgeAllAudio,
+      updateSession, removeSession, restoreSession, purgeAudio, purgeAllAudio,
       resetAllData, rescoreAll, refresh, getAudioBlob,
     ]
   );

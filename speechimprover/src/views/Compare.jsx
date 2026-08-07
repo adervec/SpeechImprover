@@ -22,13 +22,13 @@ function useAudioUrl(audioId, getAudioBlob) {
   return url;
 }
 
-function Picker({ label, value, onChange, sessions }) {
+function Picker({ label, value, onChange, sessions, exclude }) {
   return (
     <label className="field" style={{ flex: 1, minWidth: 220 }}>
       {label}
       <select value={value || ''} onChange={(e) => onChange(e.target.value)}>
         <option value="">Select a session…</option>
-        {sessions.map((s) => (
+        {sessions.filter((s) => s.id !== exclude).map((s) => (
           <option key={s.id} value={s.id}>{formatDateTime(s.createdAt)} · {s.exerciseTitle || s.mode} ({s.overall})</option>
         ))}
       </select>
@@ -77,8 +77,8 @@ export default function Compare({ route, navigate }) {
     <div className="stack">
       <div className="card">
         <div className="row wrap" style={{ gap: 14 }}>
-          <Picker label="Session A" value={aId} onChange={setAId} sessions={sessions} />
-          <Picker label="Session B" value={bId} onChange={setBId} sessions={sessions} />
+          <Picker label="Session A" value={aId} onChange={setAId} sessions={sessions} exclude={bId} />
+          <Picker label="Session B" value={bId} onChange={setBId} sessions={sessions} exclude={aId} />
         </div>
       </div>
 

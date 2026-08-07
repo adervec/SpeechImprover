@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Component, useEffect, useState } from 'react';
 import { StoreProvider, useStore } from './lib/store.jsx';
 import { DriveSyncProvider } from './lib/driveSync.jsx';
 import { RecorderProvider, useRecorder } from './lib/recorderContext.jsx';
@@ -40,6 +40,25 @@ const TITLES = {
   settings: 'Settings',
   help: 'Help & guide',
 };
+
+// One thrown view shouldn't white-screen the whole app. Reset on navigation via
+// a route-derived key (remount clears the caught error).
+class ErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="card" style={{ borderColor: 'var(--bad)' }}>
+          <h3 style={{ color: 'var(--bad)', marginTop: 0 }}>This screen hit an error.</h3>
+          <p className="muted small">{String(this.state.error?.message || this.state.error)}</p>
+          <button className="btn" onClick={() => window.location.reload()}>Reload app</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function View({ route, navigate }) {
   switch (route.page) {
@@ -86,6 +105,13 @@ function Shell() {
     applyTheme(settings.theme);
   }, [settings.theme]);
 
+  // Per-route tab title so history/bookmarks/multi-tab are distinguishable.
+  useEffect(() => {
+    document.title = `${TITLES[route.page] ?? 'SpeechImprover'} · SpeechImprover`;
+  }, [route.page]);
+
+  const showBack = route.page === 'session' || route.page === 'compare';
+
   return (
     <>
       {isRecording && <div style={{ height: 36 }} />}
@@ -95,6 +121,9 @@ function Shell() {
         <div className="main">
           <header className="topbar">
             <button className="nav-toggle" aria-label="Open menu" onClick={() => setNavOpen(true)}>☰</button>
+            {showBack && (
+              <button className="btn ghost sm" onClick={() => window.history.back()} aria-label="Go back">‹ Back</button>
+            )}
             <h1 style={{ fontSize: '1.15rem' }}>{TITLES[route.page] ?? 'SpeechImprover'}</h1>
             <DeviceBar />
           </header>
@@ -108,7 +137,9 @@ function Shell() {
             {loading ? (
               <div className="empty">Loading your history…</div>
             ) : (
-              <View route={route} navigate={navigate} />
+              <ErrorBoundary key={`${route.page}/${route.param}`}>
+                <View route={route} navigate={navigate} />
+              </ErrorBoundary>
             )}
           </main>
         </div>

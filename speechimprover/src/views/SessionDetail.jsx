@@ -42,10 +42,11 @@ export default function SessionDetail({ route, navigate }) {
         </div>
         <div className="row wrap">
           <button className="btn ghost sm" onClick={() => navigate('history')}>← History</button>
+          <button className="btn sm" title={session.favorite ? 'Unfavorite' : 'Favorite'} aria-pressed={!!session.favorite} style={{ color: session.favorite ? 'var(--warn)' : undefined }} onClick={() => updateSession(session.id, { favorite: !session.favorite })}>{session.favorite ? '★ Favorited' : '☆ Favorite'}</button>
           {session.exerciseId && <button className="btn sm" onClick={() => navigate('practice', { query: { exercise: session.exerciseId } })}>Repeat exercise</button>}
           <button className="btn sm" onClick={() => navigate('compare', { query: { a: session.id } })}>Compare ⇄</button>
-          {session.audioId && <button className="btn sm" onClick={() => { purgeAudio(session.id); toast('Audio purged.'); }}>Purge audio</button>}
-          <button className="btn sm danger" onClick={() => { removeSession(session.id); navigate('history'); }}>Delete</button>
+          {session.audioId && <button className="btn sm" onClick={() => { if (window.confirm('Purge this recording’s audio? Scores are kept; the audio can’t be recovered.')) { purgeAudio(session.id); toast('Audio purged.'); } }}>Purge audio</button>}
+          <button className="btn sm danger" onClick={() => { if (window.confirm('Delete this session permanently? This removes it and its audio for good.')) { removeSession(session.id); navigate('history'); } }}>Delete</button>
         </div>
       </div>
 
