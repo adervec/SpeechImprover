@@ -6,6 +6,7 @@
 
 import { createContext, useContext, useRef, useState, useCallback } from 'react';
 import { createRecognizer, isRecognitionSupported } from './analysis/speechRecognition.js';
+import { createLiveAnalyzer } from './analysis/liveMetrics.js';
 
 const RecorderContext = createContext(null);
 
@@ -28,6 +29,7 @@ export function RecorderProvider({ children }) {
   const [interim, setInterim] = useState('');
   const [error, setError] = useState(null);
   const [recognitionError, setRecognitionError] = useState(null);
+  const [liveMetrics, setLiveMetrics] = useState(null); // live acoustic snapshot while recording
 
   const streamRef = useRef(null);
   const audioCtxRef = useRef(null);
@@ -47,6 +49,11 @@ export function RecorderProvider({ children }) {
   const startTimeRef = useRef(0);
   const timerRef = useRef(null);
   const activeDeviceRef = useRef('');
+  const liveAnalyzerRef = useRef(null);
+  const liveBufRef = useRef(null);
+  const liveActiveRef = useRef(false);
+  const lastLiveSample = useRef(0);
+  const lastLivePublish = useRef(0);
 
   const recognitionSupported = !!isRecognitionSupported();
 
@@ -66,7 +73,9 @@ export function RecorderProvider({ children }) {
       streamRef.current.getTracks().forEach((t) => t.stop());
     }
     streamRef.current = null;
+    liveActiveRef.current = false;
     setLevel(0);
+    setLiveMetrics(null);
   }, [stopLevelLoop]);
 
   const startLevelLoop = useCallback(() => {
@@ -86,6 +95,17 @@ export function RecorderProvider({ children }) {
         lastLevelUpdate.current = now;
         // gentle non-linear boost so quiet speech is visible
         setLevel(Math.min(1, rms * 3.2));
+      }
+      // Feed the live-metrics analyzer a windowed sample a few times a second, and
+      // publish a throttled snapshot for the live feedback dashboard.
+      if (liveActiveRef.current && liveAnalyzerRef.current && liveBufRef.current && now - lastLiveSample.current > 110) {
+        lastLiveSample.current = now;
+        analyser.getFloatTimeDomainData(liveBufRef.current);
+        liveAnalyzerRef.current.pushWindow(liveBufRef.current, (now - startTimeRef.current) / 1000);
+        if (now - lastLivePublish.current > 500) {
+          lastLivePublish.current = now;
+          setLiveMetrics(liveAnalyzerRef.current.snapshot());
+        }
       }
       rafRef.current = requestAnimationFrame(tick);
     };
@@ -109,7 +129,11 @@ export function RecorderProvider({ children }) {
     if (ctx.state === 'suspended') await ctx.resume();
     const source = ctx.createMediaStreamSource(stream);
     const analyser = ctx.createAnalyser();
-    analyser.fftSize = 1024;
+    // Window sized for the live metrics analyzer (also fine for the RMS meter).
+    const la = createLiveAnalyzer(ctx.sampleRate);
+    analyser.fftSize = la.win;
+    liveAnalyzerRef.current = la;
+    liveBufRef.current = new Float32Array(la.win);
     source.connect(analyser);
     audioCtxRef.current = ctx;
     analyserRef.current = analyser;
@@ -231,6 +255,18 @@ export function RecorderProvider({ children }) {
         setElapsedMs(performance.now() - startTimeRef.current);
       }, 200);
 
+      // Fresh live-metrics analyzer for this take (drops any monitor-time frames).
+      if (audioCtxRef.current && analyserRef.current) {
+        const la = createLiveAnalyzer(audioCtxRef.current.sampleRate);
+        analyserRef.current.fftSize = la.win;
+        liveAnalyzerRef.current = la;
+        liveBufRef.current = new Float32Array(la.win);
+      }
+      setLiveMetrics(null);
+      lastLiveSample.current = 0;
+      lastLivePublish.current = 0;
+      liveActiveRef.current = true;
+
       setMode('recording');
       return true;
     } catch (e) {
@@ -291,6 +327,7 @@ export function RecorderProvider({ children }) {
     error,
     recognitionError,
     recognitionSupported,
+    liveMetrics,
     isRecording: mode === 'recording',
     isMonitoring: mode === 'monitoring',
     isActive: mode !== 'idle',

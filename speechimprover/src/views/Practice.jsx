@@ -5,6 +5,8 @@ import { useToast } from '../components/ui.jsx';
 import SessionReport from '../components/SessionReport.jsx';
 import ArticulationModel from '../components/ArticulationModel.jsx';
 import RecordingAudio from '../components/RecordingAudio.jsx';
+import LiveFeedback from '../components/LiveFeedback.jsx';
+import { analyzeTranscript } from '../lib/analysis/speechMetrics.js';
 import { analyzeRecording, assessCompletion } from '../lib/analysis/index.js';
 import { ATTRIBUTE_MAP } from '../lib/analysis/attributes.js';
 import {
@@ -447,6 +449,10 @@ export default function Practice({ route, navigate }) {
   }
 
   const recording = phase === 'recording';
+  // Live per-attribute feedback while speaking: acoustic snapshot from the recorder
+  // merged with transcript-derived metrics, scored by the same attribute functions.
+  const liveTx = recording ? analyzeTranscript(`${recorder.finalText} ${recorder.interim}`.trim(), Math.max(1, recorder.elapsedMs / 1000)) : null;
+  const liveMerged = recording ? { ...(recorder.liveMetrics || {}), ...(liveTx || {}), recognitionConfidence: 0 } : null;
 
   return (
     <div className="stack">
@@ -618,6 +624,16 @@ export default function Practice({ route, navigate }) {
             {recorder.recognitionError && (
               <p className="tiny" style={{ color: 'var(--warn)', margin: '4px 0 0' }}>⚠️ {recorder.recognitionError}</p>
             )}
+          </div>
+        )}
+
+        {recording && (
+          <div className="card tight" style={{ marginTop: 14, background: 'var(--bg-2)' }}>
+            <div className="row spread" style={{ marginBottom: 8 }}>
+              <div className="tag" style={{ margin: 0 }}>Live feedback</div>
+              <span className="tiny muted">updates as you speak · live estimates</span>
+            </div>
+            <LiveFeedback metrics={liveMerged} profile={profile} wordCount={liveTx?.wordCount || 0} />
           </div>
         )}
 

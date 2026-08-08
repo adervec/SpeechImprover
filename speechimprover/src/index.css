@@ -658,6 +658,27 @@ table.data tr:hover td {
   animation: slideUp 0.2s ease;
   max-width: min(92vw, 520px);
 }
+/* Live feedback dashboard (shown while recording). */
+.live-feedback {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));
+  gap: 8px;
+}
+.lf-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: 0.82rem;
+  transition: border-color 0.3s ease;
+}
+.lf-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; transition: background 0.3s ease; }
+.lf-label { font-weight: 600; }
+.lf-detail { margin-left: auto; font-variant-numeric: tabular-nums; font-size: 0.76rem; white-space: nowrap; }
+
 .toast.error { border-color: var(--bad); }
 .toast.success { border-color: var(--good); }
 .toast-action {
