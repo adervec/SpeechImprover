@@ -17,6 +17,7 @@ import VoiceLab from './views/VoiceLab.jsx';
 import Trends from './views/Trends.jsx';
 import History from './views/History.jsx';
 import Coach from './views/Coach.jsx';
+import Cowork from './views/Cowork.jsx';
 import SessionDetail from './views/SessionDetail.jsx';
 import Compare from './views/Compare.jsx';
 import References from './views/References.jsx';
@@ -34,6 +35,7 @@ const TITLES = {
   trends: 'Trends',
   history: 'Recordings & data',
   coach: 'AI coach',
+  cowork: 'Cowork sync',
   session: 'Session detail',
   compare: 'Compare sessions',
   references: 'References',
@@ -79,6 +81,8 @@ function View({ route, navigate }) {
       return <History route={route} navigate={navigate} />;
     case 'coach':
       return <Coach route={route} navigate={navigate} />;
+    case 'cowork':
+      return <Cowork route={route} navigate={navigate} />;
     case 'session':
       return <SessionDetail key={route.param} route={route} navigate={navigate} />;
     case 'compare':

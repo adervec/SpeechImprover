@@ -11,6 +11,7 @@ const COMMANDS = [
   { id: 'trends', label: 'Trends', hint: 'Progress charts' },
   { id: 'history', label: 'Recordings', hint: 'History & data' },
   { id: 'coach', label: 'AI coach', hint: 'Feedback & summary' },
+  { id: 'cowork', label: 'Cowork sync', hint: 'AI folder handshake' },
   { id: 'references', label: 'References', hint: 'Goals & targets' },
   { id: 'profile', label: 'Profile', hint: 'About you' },
   { id: 'settings', label: 'Settings', hint: 'Preferences & data' },

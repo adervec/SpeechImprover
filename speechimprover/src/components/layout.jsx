@@ -17,6 +17,7 @@ const NAV = [
   { id: 'trends', label: 'Trends', icon: '📈' },
   { id: 'history', label: 'Recordings', icon: '🕘' },
   { id: 'coach', label: 'AI coach', icon: '🤝' },
+  { id: 'cowork', label: 'Cowork sync', icon: '🔗' },
   { id: 'references', label: 'References', icon: '🎯' },
   { id: 'profile', label: 'Profile', icon: '👤' },
   { id: 'settings', label: 'Settings', icon: '⚙️' },

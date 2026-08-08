@@ -2,9 +2,10 @@
 // Two stores: `sessions` (metrics + metadata) and `audio` (bulky blobs, purgeable).
 
 const DB_NAME = 'speechimprover';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_SESSIONS = 'sessions';
 const STORE_AUDIO = 'audio';
+const STORE_FS = 'fsHandles';
 
 let dbPromise = null;
 
@@ -25,6 +26,11 @@ function openDb() {
       }
       if (!db.objectStoreNames.contains(STORE_AUDIO)) {
         db.createObjectStore(STORE_AUDIO, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(STORE_FS)) {
+        // File System Access handles (the chosen cowork folder). Structured-cloneable
+        // but NOT JSON — kept out of export/import. key string → handle.
+        db.createObjectStore(STORE_FS);
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -105,4 +111,15 @@ export async function getAllAudioMeta() {
 export async function clearAll() {
   await tx(STORE_SESSIONS, 'readwrite', (store) => reqToPromise(store.clear()));
   await tx(STORE_AUDIO, 'readwrite', (store) => reqToPromise(store.clear()));
+}
+
+// ---- File System Access handles (e.g. the cowork folder) ----
+
+export async function getFsHandle(key) {
+  return tx(STORE_FS, 'readonly', (store) => reqToPromise(store.get(key)));
+}
+
+export async function setFsHandle(key, handle) {
+  return tx(STORE_FS, 'readwrite', (store) =>
+    reqToPromise(handle == null ? store.delete(key) : store.put(handle, key)));
 }
