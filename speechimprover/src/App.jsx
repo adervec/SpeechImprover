@@ -7,6 +7,7 @@ import { Sidebar, DeviceBar, RecordingIndicator } from './components/layout.jsx'
 import CommandPalette from './components/CommandPalette.jsx';
 import { useRouter } from './hooks/useRouter.js';
 import { applyTheme } from './styles/themes.js';
+import { autoScanNarrations } from './lib/narrationWatch.js';
 
 import Dashboard from './views/Dashboard.jsx';
 import Practice from './views/Practice.jsx';
@@ -101,7 +102,7 @@ function View({ route, navigate }) {
 }
 
 function Shell() {
-  const { settings, loading, storageError } = useStore();
+  const { settings, loading, storageError, addSession } = useStore();
   const { isRecording } = useRecorder();
   const { route, navigate } = useRouter();
   const [navOpen, setNavOpen] = useState(false);
@@ -119,6 +120,15 @@ function Shell() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  // Watch the linked Tachyread narration folder: any new quality logs become training sessions.
+  // Silent — runs only when a folder is linked AND the browser kept read permission (dedupe is by
+  // file name against the DB, so a scan can never double-import). Manual scan lives in Settings.
+  useEffect(() => {
+    if (loading) return;
+    autoScanNarrations(addSession).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   // Capture the PWA install event so we can offer an explicit "Install" button.
   useEffect(() => {

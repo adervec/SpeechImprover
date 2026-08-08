@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../lib/store.jsx';
 import { useDriveSync } from '../lib/driveSync.jsx';
 import { useRecorder } from '../lib/recorderContext.jsx';
@@ -7,11 +7,15 @@ import { Modal, useToast } from '../components/ui.jsx';
 import { THEMES, THEME_KEYS } from '../styles/themes.js';
 import { exportData, importData, downloadJson } from '../lib/exportImport.js';
 import { formatBytes } from '../lib/format.js';
+import {
+  FS_SUPPORTED, pickNarrationDir, getNarrationDir, forgetNarrationDir,
+  ensureReadPermission, scanNarrationDir,
+} from '../lib/narrationWatch.js';
 
 export default function Settings() {
   const {
     settings, updateSettings, profile, updateProfile, sessions,
-    purgeAllAudio, resetAllData, refresh,
+    purgeAllAudio, resetAllData, refresh, addSession,
   } = useStore();
   const { startMonitor, stopMonitor, isMonitoring, recognitionSupported } = useRecorder();
   const { inputs, outputs, hasLabels, refresh: refreshDevices } = useMediaDevices();
@@ -19,6 +23,32 @@ export default function Settings() {
   const fileRef = useRef(null);
   const [confirm, setConfirm] = useState(null);
   const [includeAudio, setIncludeAudio] = useState(true);
+  const [narrationDir, setNarrationDir] = useState(null);
+  const [scanning, setScanning] = useState(false);
+  useEffect(() => { getNarrationDir().then((d) => d && setNarrationDir(d)).catch(() => {}); }, []);
+
+  async function linkNarrationFolder() {
+    try {
+      const dir = await pickNarrationDir();
+      setNarrationDir(dir);
+      await runNarrationScan(dir);
+    } catch { /* cancelled */ }
+  }
+  async function runNarrationScan(dir = narrationDir) {
+    if (!dir) return;
+    setScanning(true);
+    try {
+      if (!(await ensureReadPermission(dir, true))) { toast('Folder access was denied.'); return; }
+      const res = await scanNarrationDir(dir, addSession);
+      toast(res.imported
+        ? `Imported ${res.imported} narration session${res.imported === 1 ? '' : 's'} from Tachyread.`
+        : res.seen ? 'No new narration sessions — everything already imported.' : 'No Tachyread narration logs in that folder yet.');
+    } catch (err) {
+      toast(`Scan failed: ${err.message || err}`);
+    } finally {
+      setScanning(false);
+    }
+  }
 
   const totalAudio = useMemo(() => sessions.reduce((sum, s) => sum + (s.audioBytes || 0), 0), [sessions]);
   const audioCount = useMemo(() => sessions.filter((s) => s.audioId).length, [sessions]);
@@ -123,6 +153,37 @@ export default function Settings() {
           <span>Use the browser's speech recognition for live transcript & pace/filler/vocabulary scoring (English).</span>
         </label>
         {!recognitionSupported && <p className="tiny" style={{ color: 'var(--warn)', marginTop: 8 }}>⚠️ Not supported in this browser — try Chrome or Edge. Pitch, energy and articulation are still analyzed.</p>}
+      </div>
+
+      {/* Tachyread narration → training sessions */}
+      <div className="card">
+        <div className="card-head"><h3>Tachyread narration</h3></div>
+        <p className="small muted" style={{ marginTop: 0 }}>
+          Narrating an audiobook in Tachyread is speech practice. Point Tachyread’s read-through
+          recorder and this app at the <b>same folder</b>: Tachyread drops a small quality log per
+          session (pace, level, steadiness — no audio), and each log is imported here as a completed
+          training session, counting toward your streak, activity grid and practice time.
+        </p>
+        {!FS_SUPPORTED && <p className="small muted">Folder watching needs a Chromium browser (Chrome, Edge, Brave).</p>}
+        {FS_SUPPORTED && (
+          <div className="row wrap">
+            {narrationDir ? (
+              <>
+                <span className="badge">📁 {narrationDir.name}</span>
+                <button className="btn" disabled={scanning} onClick={() => runNarrationScan()}>{scanning ? 'Scanning…' : '↻ Scan now'}</button>
+                <button className="btn" onClick={async () => { await forgetNarrationDir(); setNarrationDir(null); }}>Forget folder</button>
+              </>
+            ) : (
+              <button className="btn" onClick={linkNarrationFolder}>📁 Watch a narration folder…</button>
+            )}
+          </div>
+        )}
+        {narrationDir && (
+          <p className="tiny muted" style={{ marginTop: 10 }}>
+            The folder is also scanned automatically when the app opens (when the browser has kept
+            permission). Already-imported sessions are never duplicated.
+          </p>
+        )}
       </div>
 
       {/* Cloud sync */}
