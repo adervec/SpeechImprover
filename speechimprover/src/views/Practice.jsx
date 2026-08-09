@@ -6,7 +6,7 @@ import SessionReport from '../components/SessionReport.jsx';
 import ArticulationModel from '../components/ArticulationModel.jsx';
 import RecordingAudio from '../components/RecordingAudio.jsx';
 import LiveFeedback from '../components/LiveFeedback.jsx';
-import { analyzeTranscript } from '../lib/analysis/speechMetrics.js';
+import { analyzeTranscript, readingCoverage } from '../lib/analysis/speechMetrics.js';
 import { analyzeRecording, assessCompletion } from '../lib/analysis/index.js';
 import { ATTRIBUTE_MAP } from '../lib/analysis/attributes.js';
 import {
@@ -74,7 +74,7 @@ function buildCustomExercise(mode, prompt, passageId, tone) {
 }
 
 export default function Practice({ route, navigate }) {
-  const { profile, settings, sessions, addSession, updateSession, program, completeProgramStep, recordTechniqueResult, projects, updateProject } = useStore();
+  const { profile, settings, updateSettings, sessions, addSession, updateSession, program, completeProgramStep, recordTechniqueResult, projects, updateProject } = useStore();
   const recorder = useRecorder();
   const toast = useToast();
 
@@ -173,6 +173,34 @@ export default function Practice({ route, navigate }) {
 
   const recognitionOn = settings.recognitionEnabled && recorder.recognitionSupported;
 
+  // How much of the provided text has been read (final transcript only — the
+  // high-confidence signal). Drives the live "% read" badge and auto-submit.
+  const readCov = phase === 'recording' && activeExercise.mode === 'read' && activeExercise.prompt && recognitionOn
+    ? readingCoverage(activeExercise.prompt, recorder.finalText)
+    : null;
+  const recorderLive = useRef(recorder);
+  useEffect(() => { recorderLive.current = recorder; });
+  const autoSubmitRef = useRef(false);
+  useEffect(() => {
+    if (phase !== 'recording') { autoSubmitRef.current = false; return; }
+    if (!settings.autoSubmitRead || autoSubmitRef.current) return;
+    if (!readCov || readCov.coverage < 0.95) return;
+    autoSubmitRef.current = true;
+    toast('📖 Whole text read — submitting…', { type: 'success' });
+    // Grace period so a trailing word can finalize, then stop + submit directly
+    // (skips the review screen — the user opted into hands-free completion).
+    setTimeout(async () => {
+      if (!recorderLive.current.isRecording) return; // user already stopped manually
+      const rec = await recorderLive.current.stopRecording();
+      if (pendingUrlRef.current) URL.revokeObjectURL(pendingUrlRef.current);
+      pendingUrlRef.current = URL.createObjectURL(rec.blob);
+      const take = { ...rec, previewUrl: pendingUrlRef.current };
+      setPendingRec(take); // a failed analysis still lands on the review screen
+      submitRecording(take);
+    }, 1500);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, readCov?.coverage, settings.autoSubmitRead]);
+
   // Program progress (reflects the latest store state, incl. the step we just finished).
   const progSteps = inProgramMode ? program?.steps || [] : [];
   const progTotal = progSteps.length;
@@ -199,9 +227,10 @@ export default function Practice({ route, navigate }) {
     setPhase('review');
   }
 
-  // Analyze + save the take the user chose to submit.
-  async function submitRecording() {
-    const rec = pendingRec;
+  // Analyze + save the take the user chose to submit (or an explicit take when
+  // auto-submit fires straight from recording, skipping the review phase).
+  async function submitRecording(recArg) {
+    const rec = recArg || pendingRec;
     if (!rec) return;
     setPhase('analyzing');
     try {
@@ -435,7 +464,7 @@ export default function Practice({ route, navigate }) {
           </div>
           {pendingRec.previewUrl && <RecordingAudio src={pendingRec.previewUrl} />}
           <div className="row wrap" style={{ marginTop: 16 }}>
-            <button className="btn primary lg" onClick={submitRecording}>✓ Submit for analysis</button>
+            <button className="btn primary lg" onClick={() => submitRecording()}>✓ Submit for analysis</button>
             <button className="btn lg" onClick={restartRecording}>↻ Restart</button>
             <button className="btn ghost danger lg" onClick={abandonRecording}>✕ Abandon</button>
           </div>
@@ -614,7 +643,14 @@ export default function Practice({ route, navigate }) {
               <span className="mic-dot live" style={{ background: 'var(--rec)' }} />
               <div className="mic-meter-track"><div className="mic-meter-fill" style={{ width: `${Math.round(recorder.level * 100)}%` }} /></div>
             </div>
-            <div className="tag" style={{ marginBottom: 6 }}>Live transcript</div>
+            <div className="row spread" style={{ marginBottom: 6 }}>
+              <div className="tag" style={{ margin: 0 }}>Live transcript</div>
+              {readCov && (
+                <span className="tiny mono" style={{ color: readCov.coverage >= 0.95 ? 'var(--good)' : 'var(--text-dim)' }}>
+                  📖 {Math.round(readCov.coverage * 100)}% read
+                </span>
+              )}
+            </div>
             <p style={{ minHeight: 40 }}>
               {recorder.finalText} <span className="muted">{recorder.interim}</span>
               {!recorder.finalText && !recorder.interim && (
@@ -633,7 +669,7 @@ export default function Practice({ route, navigate }) {
               <div className="tag" style={{ margin: 0 }}>Live feedback</div>
               <span className="tiny muted">updates as you speak · live estimates</span>
             </div>
-            <LiveFeedback metrics={liveMerged} profile={profile} wordCount={liveTx?.wordCount || 0} />
+            <LiveFeedback metrics={liveMerged} profile={profile} wordCount={liveTx?.wordCount || 0} focusAttrs={activeExercise.targetAttributes || []} />
           </div>
         )}
 
@@ -660,6 +696,17 @@ export default function Practice({ route, navigate }) {
               : 'Press Space or Start. A 3-2-1 pre-roll warms the mic so your first word isn’t clipped.'}
           </span>
         </div>
+        {activeExercise.mode === 'read' && activeExercise.prompt && recognitionOn && !recording && (
+          <label className="row" style={{ gap: 6, alignItems: 'center', marginTop: 10, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={!!settings.autoSubmitRead}
+              onChange={(e) => updateSettings({ autoSubmitRead: e.target.checked })}
+              style={{ width: 'auto' }}
+            />
+            <span className="small muted">Auto-submit when the whole text has been read (skips the review step)</span>
+          </label>
+        )}
       </div>
 
       {(activeExercise.mode === 'read' || activeExercise.mode === 'twister') && activeExercise.prompt && (

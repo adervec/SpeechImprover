@@ -66,6 +66,7 @@ export function buildCue(albumTitle, cueTracks) {
     lines.push(`FILE "${t.file}" WAVE`);
     lines.push(`  TRACK ${pad2(t.index)} AUDIO`);
     lines.push(`    TITLE "${cueEsc(t.title)}"`);
+    if (t.pages) lines.push(`    REM PAGES "${cueEsc(t.pages)}"`);
     lines.push('    INDEX 01 00:00:00'); // each track is its own file → starts at 0
   }
   return lines.join('\n') + '\n';
@@ -73,7 +74,7 @@ export function buildCue(albumTitle, cueTracks) {
 
 export function buildChaptersTxt(cueTracks) {
   // Cumulative timeline, as if the tracks were played back to back.
-  return cueTracks.map((t) => `${secToStamp(t.startSec)}  ${t.title}`).join('\n') + '\n';
+  return cueTracks.map((t) => `${secToStamp(t.startSec)}  ${t.title}${t.pages ? ` — pages ${t.pages}` : ''}`).join('\n') + '\n';
 }
 
 export function buildM3u(cueTracks) {
@@ -217,7 +218,7 @@ export async function exportProjectAudiobook(project, sessions, deps, onProgress
     const bytes = new Uint8Array(await wav.arrayBuffer());
     const file = `${pad2(i + 1)}-${slug(t.title)}.wav`;
     files.push({ name: file, bytes });
-    cueTracks.push({ index: i + 1, title: t.title, file, startSec: acc, durationSec });
+    cueTracks.push({ index: i + 1, title: t.title, file, startSec: acc, durationSec, pages: t.pages || '' });
     acc += durationSec;
   }
 
@@ -248,5 +249,7 @@ export function demo() {
   const rec = reconcileTracks(dt, [{ id: 's2', createdAt: '2020' }, { id: 's3', createdAt: '2021' }]);
   console.assert(rec.length === 2 && rec.some((t) => t.segments[0].sessionId === 's3'), 'drops deleted s1, appends new s3');
   console.assert(secToStamp(3661) === '1:01:01', 'HH:MM:SS');
+  console.assert(buildChaptersTxt([{ startSec: 0, title: 'A', pages: '12–18' }]).includes('pages 12–18'), 'pages in chapters');
+  console.assert(buildCue('B', [{ index: 1, title: 'A', file: 'a.wav', pages: '3-9' }]).includes('REM PAGES "3-9"'), 'pages in cue');
   return zip;
 }

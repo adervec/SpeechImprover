@@ -98,4 +98,36 @@ export function analyzeTranscript(transcript, durationSec) {
   };
 }
 
+// How much of a provided text has been read aloud: fraction of the prompt's words
+// found in order in the transcript (greedy, small look-ahead window so recognition
+// substitutions/insertions don't derail the alignment). Powers auto-submit.
+export function readingCoverage(promptText, transcript) {
+  const p = tokenize(promptText);
+  const t = tokenize(transcript);
+  if (!p.length) return { coverage: 0, matched: 0, total: 0 };
+  let ti = 0;
+  let matched = 0;
+  for (const w of p) {
+    const end = Math.min(t.length, ti + 6);
+    for (let j = ti; j < end; j += 1) {
+      if (t[j] === w) { matched += 1; ti = j + 1; break; }
+    }
+  }
+  return { coverage: matched / p.length, matched, total: p.length };
+}
+
+// Runnable self-check for the coverage alignment.
+export function demoCoverage() {
+  const prompt = 'the quick brown fox jumps over the lazy dog';
+  console.assert(readingCoverage(prompt, prompt).coverage === 1, 'perfect read = 1');
+  const partial = readingCoverage(prompt, 'the quick brown fox');
+  console.assert(partial.coverage > 0.4 && partial.coverage < 0.5, `partial ~4/9, got ${partial.coverage}`);
+  const noisy = readingCoverage(prompt, 'the quick um brown fox jumps over uh the lazy dog');
+  console.assert(noisy.coverage === 1, `insertions tolerated, got ${noisy.coverage}`);
+  const skipped = readingCoverage(prompt, 'the quick brown fox jumps over the dog');
+  console.assert(skipped.coverage > 0.8 && skipped.coverage < 1, `one missed word, got ${skipped.coverage}`);
+  console.assert(readingCoverage('', 'anything').coverage === 0, 'empty prompt = 0');
+  return true;
+}
+
 export { FILLER_WORDS, FILLER_PHRASES };

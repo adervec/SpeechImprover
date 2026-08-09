@@ -33,11 +33,28 @@ function ready(attr, m, wordCount) {
   return m.samples >= 3 && m.meanRms > 0;
 }
 
-export default function LiveFeedback({ metrics, profile, wordCount = 0 }) {
+// focusAttrs: the exercise's targetAttributes — chips outside that set are greyed
+// (still measured, but visually parked) and sorted after the relevant ones.
+export default function LiveFeedback({ metrics, profile, wordCount = 0, focusAttrs = [] }) {
+  const focus = focusAttrs?.length ? new Set(focusAttrs) : null;
+  const list = focus
+    ? [...ATTRIBUTES].sort((a, b) => (focus.has(a.key) ? 0 : 1) - (focus.has(b.key) ? 0 : 1))
+    : ATTRIBUTES;
   return (
     <div className="live-feedback">
-      {ATTRIBUTES.map((attr) => {
+      {list.map((attr) => {
         const label = SHORT[attr.key] || attr.label;
+        const off = focus ? !focus.has(attr.key) : false;
+        if (off) {
+          const isReady = ready(attr, metrics, wordCount);
+          return (
+            <div key={attr.key} className="lf-chip off" title={`${attr.blurb} — not a focus of this exercise`}>
+              <span className="lf-dot" style={{ background: 'var(--border)' }} />
+              <span className="lf-label muted">{label}</span>
+              <span className="lf-detail muted">{isReady ? attr.detail(metrics) : '—'}</span>
+            </div>
+          );
+        }
         if (!ready(attr, metrics, wordCount)) {
           return (
             <div key={attr.key} className="lf-chip" title={attr.blurb}>

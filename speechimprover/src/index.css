@@ -661,20 +661,23 @@ table.data tr:hover td {
 /* Live feedback dashboard (shown while recording). */
 .live-feedback {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
   gap: 8px;
 }
 .lf-chip {
   display: flex;
+  flex-wrap: wrap; /* detail drops to its own line instead of clipping */
   align-items: center;
-  gap: 8px;
+  gap: 4px 8px;
+  min-width: 0;
   padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface);
   font-size: 0.82rem;
-  transition: border-color 0.3s ease;
+  transition: border-color 0.3s ease, opacity 0.3s ease;
 }
+.lf-chip.off { opacity: 0.45; }
 .lf-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; transition: background 0.3s ease; }
 .lf-label { font-weight: 600; }
 .lf-detail { margin-left: auto; font-variant-numeric: tabular-nums; font-size: 0.76rem; white-space: nowrap; }

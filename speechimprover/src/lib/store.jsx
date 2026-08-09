@@ -39,6 +39,7 @@ const DEFAULT_SETTINGS = {
   outputDeviceId: '',
   recognitionEnabled: true,
   weeklyGoal: 3,
+  autoSubmitRead: false, // auto stop+submit a read exercise once the text is fully read
 };
 
 function loadLocal(key, fallback) {

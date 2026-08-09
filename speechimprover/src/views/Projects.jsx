@@ -112,6 +112,35 @@ function ProjectList({ projects, sessions, createProject, navigate }) {
   );
 }
 
+// Inline-editable page range a recording covers (for projects read from a physical
+// book/printout). Free text — "12–18", "iv–vi", "ch. 3" all fine. Empty clears it.
+function EditablePages({ value, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState(value || '');
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        value={val}
+        placeholder="e.g. 12–18"
+        onChange={(e) => setVal(e.target.value)}
+        onBlur={() => { setEditing(false); if (val.trim() !== (value || '')) onSave(val.trim()); }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur();
+          if (e.key === 'Escape') { setVal(value || ''); setEditing(false); }
+        }}
+        style={{ width: 100, padding: '4px 8px' }}
+      />
+    );
+  }
+  return (
+    <button className="btn ghost sm" style={{ padding: '2px 6px' }} title="Pages this recording covers"
+      onClick={() => { setVal(value || ''); setEditing(true); }}>
+      📄 {value ? `pp. ${value}` : 'pages'}
+    </button>
+  );
+}
+
 // Inline-editable track title (the recording's alias within the project).
 function EditableTitle({ value, onSave }) {
   const [editing, setEditing] = useState(false);
@@ -172,11 +201,15 @@ function ProjectDetail({ project, sessions, updateProject, deleteProject, naviga
   function renameTrack(i, title) {
     commitTracks(tracks.map((t, k) => (k === i ? { ...t, title } : t)));
   }
+  function setPages(i, pages) {
+    commitTracks(tracks.map((t, k) => (k === i ? { ...t, pages: pages || undefined } : t)));
+  }
   // Merge track i into the next one: one track playing both takes back to back.
   function mergeDown(i) {
     if (i >= tracks.length - 1) return;
     const a = tracks[i]; const b = tracks[i + 1];
-    const merged = { id: a.id, title: a.title, segments: [...a.segments, ...b.segments] };
+    const pages = [a.pages, b.pages].filter(Boolean).join(', ') || undefined;
+    const merged = { id: a.id, title: a.title, segments: [...a.segments, ...b.segments], pages };
     commitTracks([...tracks.slice(0, i), merged, ...tracks.slice(i + 2)]);
     toast('Tracks merged.');
   }
@@ -188,6 +221,7 @@ function ProjectDetail({ project, sessions, updateProject, deleteProject, naviga
       id: `t-${seg.sessionId}-${k}-${Math.round((seg.startSec ?? 0) * 1000)}`,
       title: `${t.title} (${k + 1})`,
       segments: [seg],
+      pages: t.pages,
     }));
     commitTracks([...tracks.slice(0, i), ...pieces, ...tracks.slice(i + 1)]);
     toast(`Ungrouped into ${pieces.length} tracks.`);
@@ -204,6 +238,7 @@ function ProjectDetail({ project, sessions, updateProject, deleteProject, naviga
         id: `t-${sid}-${Math.round(bounds[k] * 1000)}`,
         title: bounds.length > 2 ? `${t.title} (${k + 1})` : t.title,
         segments: [{ sessionId: sid, startSec: +bounds[k].toFixed(3), endSec: +bounds[k + 1].toFixed(3) }],
+        pages: t.pages, // starting point — refine per piece after a split
       });
     }
     commitTracks([...tracks.slice(0, i), ...pieces, ...tracks.slice(i + 1)]);
@@ -315,7 +350,7 @@ function ProjectDetail({ project, sessions, updateProject, deleteProject, naviga
         <div className="card-head">
           <div>
             <h3>🎧 Tracklist</h3>
-            <span className="tiny muted">reorder, rename, merge/split &amp; preview — this is exactly what the audiobook exports</span>
+            <span className="tiny muted">reorder, rename, page ranges, merge/split &amp; preview — this is exactly what the audiobook exports</span>
           </div>
           <button className="btn primary sm" disabled={!tracks.length || !!exporting} onClick={exportAudiobook}>
             {exporting ? `Rendering ${Math.min(exporting.i + 1, exporting.total)}/${exporting.total}…` : '⬇ Export audiobook'}
@@ -337,9 +372,10 @@ function ProjectDetail({ project, sessions, updateProject, deleteProject, naviga
                         <button className="btn ghost sm" style={{ padding: '0 7px', lineHeight: 1.2 }} disabled={i === tracks.length - 1} onClick={() => moveTrack(i, 1)} aria-label="Move down">▼</button>
                       </div>
                       <div style={{ minWidth: 0 }}>
-                        <div className="row" style={{ gap: 8 }}>
+                        <div className="row wrap" style={{ gap: 8 }}>
                           <span className="tag">#{i + 1}</span>
                           <EditableTitle value={t.title} onSave={(v) => renameTrack(i, v)} />
+                          <EditablePages value={t.pages} onSave={(v) => setPages(i, v)} />
                         </div>
                         <span className="tiny muted">
                           {formatDuration(m.duration)}{m.segs.length > 1 ? ` · ${m.segs.length} clips` : ''}{m.avg != null ? ` · avg ${m.avg}` : ''}
