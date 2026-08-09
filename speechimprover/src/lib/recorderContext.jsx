@@ -102,7 +102,7 @@ export function RecorderProvider({ children }) {
         lastLiveSample.current = now;
         analyser.getFloatTimeDomainData(liveBufRef.current);
         liveAnalyzerRef.current.pushWindow(liveBufRef.current, (now - startTimeRef.current) / 1000);
-        if (now - lastLivePublish.current > 500) {
+        if (now - lastLivePublish.current > 250) {
           lastLivePublish.current = now;
           setLiveMetrics(liveAnalyzerRef.current.snapshot());
         }

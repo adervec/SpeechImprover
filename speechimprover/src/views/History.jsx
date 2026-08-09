@@ -120,7 +120,7 @@ export default function History({ navigate }) {
   async function doDelete(s) {
     const removed = await removeSession(s.id);
     setConfirmDel(null);
-    toast('Session deleted.', {
+    toast('Recording deleted.', {
       action: { label: 'Undo', onClick: () => removed && restoreSession(removed.record, removed.blob, removed.mime) },
     });
   }
@@ -146,7 +146,7 @@ export default function History({ navigate }) {
     const removed = [];
     for (const id of ids) { const r = await removeSession(id); if (r) removed.push(r); }
     setSelected(new Set());
-    toast(`${removed.length} session${removed.length === 1 ? '' : 's'} deleted.`, {
+    toast(`${removed.length} recording${removed.length === 1 ? '' : 's'} deleted.`, {
       action: { label: 'Undo', onClick: () => removed.forEach((r) => restoreSession(r.record, r.blob, r.mime)) },
     });
   }
@@ -158,7 +158,7 @@ export default function History({ navigate }) {
   }
 
   if (!sessions.length) {
-    return <EmptyState icon="🕘" title="No sessions yet" action={<button className="btn primary" onClick={() => navigate('practice')}>Record one</button>}>Everything you record is historized here by default.</EmptyState>;
+    return <EmptyState icon="🕘" title="No recordings yet" action={<button className="btn primary" onClick={() => navigate('practice')}>Record one</button>}>Everything you record is historized here by default.</EmptyState>;
   }
 
   return (
@@ -204,7 +204,7 @@ export default function History({ navigate }) {
 
       {compareSel.length === 2 && (
         <div className="card tight row spread" style={{ borderColor: 'var(--accent)' }}>
-          <span className="small">2 sessions selected for comparison.</span>
+          <span className="small">2 recordings selected for comparison.</span>
           <div className="row">
             <button className="btn ghost sm" onClick={() => setCompareSel([])}>Clear</button>
             <button className="btn primary sm" onClick={() => navigate('compare', { query: { a: compareSel[0], b: compareSel[1] } })}>Compare A vs B →</button>
@@ -213,7 +213,7 @@ export default function History({ navigate }) {
       )}
 
       {sorted.length === 0 ? (
-        <EmptyState icon="🔍" title="No sessions match"
+        <EmptyState icon="🔍" title="No recordings match"
           action={<button className="btn" onClick={() => { setSearch(''); setModeFilter('all'); setFavOnly(false); }}>Clear filters</button>}>
           Nothing matches your current search and filters.
         </EmptyState>
@@ -272,7 +272,7 @@ export default function History({ navigate }) {
 
       {confirmDel && (
         <Modal
-          title="Delete this session?"
+          title="Delete this recording?"
           onClose={() => setConfirmDel(null)}
           footer={<>
             <button className="btn ghost" onClick={() => setConfirmDel(null)}>Cancel</button>

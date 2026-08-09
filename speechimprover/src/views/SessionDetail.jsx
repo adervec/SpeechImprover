@@ -46,7 +46,7 @@ export default function SessionDetail({ route, navigate }) {
           {session.exerciseId && <button className="btn sm" onClick={() => navigate('practice', { query: { exercise: session.exerciseId } })}>Repeat exercise</button>}
           <button className="btn sm" onClick={() => navigate('compare', { query: { a: session.id } })}>Compare ⇄</button>
           {session.audioId && <button className="btn sm" onClick={() => { if (window.confirm('Purge this recording’s audio? Scores are kept; the audio can’t be recovered.')) { purgeAudio(session.id); toast('Audio purged.'); } }}>Purge audio</button>}
-          <button className="btn sm danger" onClick={() => { if (window.confirm('Delete this session permanently? This removes it and its audio for good.')) { removeSession(session.id); navigate('history'); } }}>Delete</button>
+          <button className="btn sm danger" onClick={() => { if (window.confirm('Delete this recording permanently? This removes it and its audio for good.')) { removeSession(session.id); navigate('history'); } }}>Delete</button>
         </div>
       </div>
 
@@ -63,7 +63,7 @@ export default function SessionDetail({ route, navigate }) {
         <div className="card-head"><h3>Notes</h3>
           <button className="btn sm" onClick={() => { updateSession(session.id, { notes }); toast('Notes saved.'); }}>Save</button>
         </div>
-        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Add a note about this session…" />
+        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Add a note about this recording…" />
       </div>
     </div>
   );

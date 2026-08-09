@@ -137,7 +137,7 @@ export default function Cowork({ navigate }) {
 
       {!canRun && (
         <div className="card tight" style={{ borderColor: 'var(--warn)' }}>
-          <span className="small">Record a session or two first — there's nothing to coach yet.</span>
+          <span className="small">Record a take or two first — there's nothing to coach yet.</span>
         </div>
       )}
 

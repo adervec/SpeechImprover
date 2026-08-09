@@ -14,7 +14,7 @@ const PRINCIPLES = [
 export default function References({ route }) {
   const [tab, setTab] = useState(route?.query?.tab === 'guide' ? 'guide' : 'patterns');
 
-  const radarAxes = ATTRIBUTES.map((a) => ({ key: a.key, label: a.label.split(' ')[0] }));
+  const radarAxes = ATTRIBUTES.map((a) => ({ key: a.key, label: a.short }));
 
   return (
     <div className="stack">

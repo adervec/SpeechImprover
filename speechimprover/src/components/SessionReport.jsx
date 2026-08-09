@@ -137,7 +137,7 @@ export default function SessionReport({ session, audioUrl, onSelectAttr, focusAt
   const { scores, overall, distances, metrics } = session;
   const m = metrics || {};
 
-  const radarAxes = ATTRIBUTES.map((a) => ({ key: a.key, label: a.label.split(' ')[0] }));
+  const radarAxes = ATTRIBUTES.map((a) => ({ key: a.key, label: a.short }));
   const radarDatasets = [
     { label: 'Desirable', color: 'var(--good)', values: REFERENCE_PROFILES.desirable.scores, fill: 'transparent' },
     { label: 'Undesirable', color: 'var(--bad)', values: REFERENCE_PROFILES.undesirable.scores, fill: 'transparent' },

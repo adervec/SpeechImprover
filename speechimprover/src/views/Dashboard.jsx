@@ -9,6 +9,7 @@ import {
   weakestAttributes,
   trendSeries,
   weekDelta,
+  groupIntoSessions,
 } from '../lib/aggregate.js';
 import { formatDuration, relativeDay } from '../lib/format.js';
 
@@ -21,6 +22,8 @@ export default function Dashboard({ navigate }) {
     const series = trendSeries(sessions, 'overall');
     const overalls = sessions.filter((s) => s.overall != null).map((s) => s.overall);
     const weekStart = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - d.getDay()); return d.getTime(); })();
+    // A "session" = a block of takes close in time (3h+ gap starts a new one).
+    const blocks = groupIntoSessions(sessions);
     return {
       streak: computeStreak(sessions),
       avg: averageOverall(recent),
@@ -29,7 +32,8 @@ export default function Dashboard({ navigate }) {
       weak: weakestAttributes(sessions, 3),
       series,
       weekPct: weekDelta(sessions),
-      thisWeek: sessions.filter((s) => new Date(s.createdAt).getTime() >= weekStart).length,
+      sessionCount: blocks.length,
+      thisWeek: blocks.filter((b) => b.start >= weekStart).length,
     };
   }, [sessions]);
 
@@ -61,7 +65,11 @@ export default function Dashboard({ navigate }) {
       </div>
 
       <div className="grid cols-4">
-        <div className="card stat"><span className="big">{sessions.length}</span><span className="lbl">Sessions logged</span></div>
+        <div className="card stat" title="A session is a block of recordings — a 3h+ gap starts a new one.">
+          <span className="big">{stats.sessionCount}</span>
+          <span className="lbl">Practice sessions</span>
+          <span className="tiny muted">{sessions.length} recording{sessions.length === 1 ? '' : 's'}</span>
+        </div>
         <div className="card stat" title="Consecutive days with at least one recording."><span className="big" style={{ color: 'var(--accent)' }}>{stats.streak}🔥</span><span className="lbl">Day streak</span></div>
         <div className="card stat" title="Average score across your last 8 scored sessions (0–100).">
           <span className="big">{stats.avg}</span>
@@ -80,8 +88,8 @@ export default function Dashboard({ navigate }) {
         <div className="row spread">
           <div>
             <b>Weekly goal</b>
-            <div className="tiny muted">
-              {stats.thisWeek} of {goal} session{goal === 1 ? '' : 's'} this week{stats.thisWeek >= goal ? ' · reached 🎉' : ` · ${goal - stats.thisWeek} to go`}
+            <div className="tiny muted" title="A session is a block of recordings — a 3h+ gap starts a new one.">
+              {stats.thisWeek} of {goal} practice session{goal === 1 ? '' : 's'} this week{stats.thisWeek >= goal ? ' · reached 🎉' : ` · ${goal - stats.thisWeek} to go`}
             </div>
           </div>
           <div className="row" style={{ gap: 6, alignItems: 'center' }}>
@@ -146,7 +154,7 @@ export default function Dashboard({ navigate }) {
       </div>
 
       <div className="card">
-        <div className="card-head"><h3>Recent sessions</h3>
+        <div className="card-head"><h3>Recent recordings</h3>
           <button className="btn ghost sm" onClick={() => navigate('history')}>View all →</button>
         </div>
         <table className="data">

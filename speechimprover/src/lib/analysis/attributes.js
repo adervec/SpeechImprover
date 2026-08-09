@@ -34,6 +34,7 @@ function depthCenter(profile) {
 export const ATTRIBUTES = [
   {
     key: 'pace',
+    short: 'Pace',
     label: 'Pace',
     blurb: 'Words per minute in a comfortable, listenable band (~110–150 wpm).',
     weight: 1.1,
@@ -44,6 +45,7 @@ export const ATTRIBUTES = [
   },
   {
     key: 'clarity',
+    short: 'Clarity',
     label: 'Clarity (no mumbling)',
     blurb: 'Crisp consonants and finished word-endings rather than mumbled, closed-jaw speech.',
     weight: 1.2,
@@ -62,6 +64,7 @@ export const ATTRIBUTES = [
   },
   {
     key: 'fillers',
+    short: 'Fillers',
     label: 'Filler economy',
     blurb: 'Few “um / uh / like / you know” — pauses instead of fillers.',
     weight: 1.1,
@@ -72,6 +75,7 @@ export const ATTRIBUTES = [
   },
   {
     key: 'nonRepetition',
+    short: 'Variety',
     label: 'Non-repetition / richness',
     blurb: 'Varied vocabulary; avoids leaning on the same words and false starts.',
     weight: 1.0,
@@ -87,6 +91,7 @@ export const ATTRIBUTES = [
   },
   {
     key: 'resonantDepth',
+    short: 'Depth',
     label: 'Resonant depth',
     blurb: 'Lower, grounded resonance vs a thin/high pitch (reference-relative to profile).',
     weight: 0.8,
@@ -100,6 +105,7 @@ export const ATTRIBUTES = [
   },
   {
     key: 'expressiveness',
+    short: 'Expressive',
     label: 'Expressiveness',
     blurb: 'Lively pitch variation rather than a flat monotone.',
     weight: 1.0,
@@ -109,6 +115,7 @@ export const ATTRIBUTES = [
   },
   {
     key: 'nonNasal',
+    short: 'Non-nasal',
     label: 'Non-nasal tone',
     blurb: 'Open, resonant tone rather than a pinched / nasal one (rough spectral estimate).',
     weight: 0.8,
@@ -118,6 +125,7 @@ export const ATTRIBUTES = [
   },
   {
     key: 'noUptalk',
+    short: 'No uptalk',
     label: 'No uptalk',
     blurb: 'Statements fall or stay level at the end instead of rising like questions.',
     weight: 1.0,
@@ -127,6 +135,7 @@ export const ATTRIBUTES = [
   },
   {
     key: 'projection',
+    short: 'Projection',
     label: 'Projection',
     blurb: 'Steady, supported volume that does not trail off at sentence ends.',
     weight: 1.0,
@@ -140,6 +149,7 @@ export const ATTRIBUTES = [
   },
   {
     key: 'breath',
+    short: 'Breath',
     label: 'Breath & pausing',
     blurb: 'Regular breaths and pauses — neither breathless run-ons nor choppy gasping.',
     weight: 0.9,

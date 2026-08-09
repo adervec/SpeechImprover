@@ -14,9 +14,11 @@ import {
 } from './audioAnalysis.js';
 
 const PAUSE_SEC = 0.22; // silence this long ends an utterance / counts as a pause
+const HISTORY_CAP = 140; // rolling per-window trace (~15s at the ~110ms sampling cadence)
 
 export function createLiveAnalyzer(sr) {
   const fa = makeFrameAnalyzer(sr);
+  const history = []; // { t, rms, f0 (0 = unvoiced), speech } — powers the live waveform
 
   const f0s = []; // voiced pitches (Hz)
   let hfSum = 0;
@@ -69,6 +71,9 @@ export function createLiveAnalyzer(sr) {
       const speech = fr.rms > gate;
       const voiced = speech && fr.acStrength > 0.35 && fr.zcr < 0.25 && fr.f0 >= MIN_F0 && fr.f0 <= MAX_F0;
 
+      history.push({ t, rms: fr.rms, f0: voiced ? fr.f0 : 0, speech });
+      if (history.length > HISTORY_CAP) history.shift();
+
       if (speech) {
         speechCount += 1;
         hfSum += fr.hfRatio;
@@ -110,6 +115,7 @@ export function createLiveAnalyzer(sr) {
         voicedRatio: total ? voicedCount / total : 0,
         samples: total,
         voicedSamples: voicedCount,
+        history: history.slice(), // copy so React sees a fresh reference per publish
       };
     },
   };
@@ -134,5 +140,7 @@ export function demo() {
   console.assert(m.pauseCount >= 1, `detected the pause, got ${m.pauseCount}`);
   console.assert(m.silenceRatio > 0.1 && m.silenceRatio < 0.5, `silence ratio sane, got ${m.silenceRatio}`);
   console.assert(m.voicedSamples > 10, `voiced frames accumulated, got ${m.voicedSamples}`);
+  console.assert(m.history.length > 10 && m.history.length <= 140, `history rolls, got ${m.history.length}`);
+  console.assert(m.history.some((p) => p.f0 > 0) && m.history.some((p) => !p.speech), 'history has voiced + silent windows');
   return m;
 }

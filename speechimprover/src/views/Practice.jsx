@@ -6,6 +6,7 @@ import SessionReport from '../components/SessionReport.jsx';
 import ArticulationModel from '../components/ArticulationModel.jsx';
 import RecordingAudio from '../components/RecordingAudio.jsx';
 import LiveFeedback from '../components/LiveFeedback.jsx';
+import LiveWave from '../components/LiveWave.jsx';
 import { analyzeTranscript, readingCoverage } from '../lib/analysis/speechMetrics.js';
 import { analyzeRecording, assessCompletion } from '../lib/analysis/index.js';
 import { ATTRIBUTE_MAP } from '../lib/analysis/attributes.js';
@@ -129,7 +130,7 @@ export default function Practice({ route, navigate }) {
       if (countdown > 1) { setCountdown((c) => c - 1); return; }
       setCountdown(0);
       setStarting(true);
-      const ok = await recorder.startRecording(settings.inputDeviceId, { recognition: recognitionOn });
+      const ok = await recorder.startRecording(settings.inputDeviceId, { recognition: liveRecognition });
       setStarting(false);
       if (ok) setPhase('recording');
     }, 700);
@@ -172,6 +173,10 @@ export default function Practice({ route, navigate }) {
   }, [exercise, readingProject, passages, passageIdx, chooserMode, selectedPassage, customText, freePrompt, customPrompt, freeTone]);
 
   const recognitionOn = settings.recognitionEnabled && recorder.recognitionSupported;
+  // Humming / breath / sustained-tone drills are non-verbal: transcribing them is
+  // noise, so recognition stays off and the live view is a waveform, not a transcript.
+  const nonVerbal = activeExercise.mode === 'breath' || activeExercise.mode === 'sustain' || activeExercise.category === 'Warm-up';
+  const liveRecognition = recognitionOn && !nonVerbal;
 
   // How much of the provided text has been read (final transcript only — the
   // high-confidence signal). Drives the live "% read" badge and auto-submit.
@@ -398,7 +403,7 @@ export default function Practice({ route, navigate }) {
               {result.session.exerciseTitle}
               {inProgramMode && progTotal ? ` · program ${progDone}/${progTotal} done` : ''}
             </div>
-            <h1 style={{ margin: '2px 0' }}>Session debrief</h1>
+            <h1 style={{ margin: '2px 0' }}>Exercise debrief</h1>
             <p className="muted small" style={{ margin: 0 }}>
               Review your transcript and the ideal articulation below, then decide whether to practice again or continue.
             </p>
@@ -450,6 +455,9 @@ export default function Practice({ route, navigate }) {
           <p className="muted small" style={{ marginBottom: 12 }}>
             Review your transcript, then submit it for analysis, re-record, or abandon this take.
           </p>
+          {nonVerbal ? (
+            <p className="tiny muted" style={{ marginBottom: 12 }}>Non-verbal drill — no transcript. Sound &amp; pitch get analyzed when you press Submit.</p>
+          ) : (
           <div className="card tight" style={{ background: 'var(--bg-2)', marginBottom: 12 }}>
             <div className="tag" style={{ marginBottom: 6 }}>Transcript</div>
             <p style={{ minHeight: 40, whiteSpace: 'pre-wrap' }}>
@@ -462,6 +470,7 @@ export default function Practice({ route, navigate }) {
               )}
             </p>
           </div>
+          )}
           {pendingRec.previewUrl && <RecordingAudio src={pendingRec.previewUrl} />}
           <div className="row wrap" style={{ marginTop: 16 }}>
             <button className="btn primary lg" onClick={() => submitRecording()}>✓ Submit for analysis</button>
@@ -499,7 +508,7 @@ export default function Practice({ route, navigate }) {
         </div>
       )}
 
-      {!recognitionOn && (
+      {!recognitionOn && !nonVerbal && (
         <div className="card tight" style={{ borderColor: 'var(--warn)' }}>
           <span className="small">
             ⚠️ Live transcription is {settings.recognitionEnabled ? 'not supported in this browser' : 'turned off'}.
@@ -637,7 +646,17 @@ export default function Practice({ route, navigate }) {
           <div className="prompt-box muted">Speak freely — no script for this one.</div>
         )}
 
-        {recording && (
+        {recording && nonVerbal && (
+          <div className="card tight" style={{ marginTop: 14, background: 'var(--bg-2)' }}>
+            <div className="row spread" style={{ marginBottom: 8 }}>
+              <div className="tag" style={{ margin: 0 }}>Sound monitor</div>
+              <span className="tiny muted">non-verbal drill — watch the waveform &amp; pitch glide</span>
+            </div>
+            <LiveWave history={recorder.liveMetrics?.history || []} />
+          </div>
+        )}
+
+        {recording && !nonVerbal && (
           <div className="card tight" style={{ marginTop: 14, background: 'var(--bg-2)' }}>
             <div className="mic-meter" title="Live input level" style={{ marginBottom: 10 }}>
               <span className="mic-dot live" style={{ background: 'var(--rec)' }} />
@@ -810,7 +829,7 @@ function DecisionBar({ program, isTechnique, suggestion, onAgain, onNext, onSugg
       <div className="row spread wrap" style={{ gap: 12 }}>
         <div>
           <h3 style={{ margin: 0 }}>What next?</h3>
-          <span className="tiny muted">This session{isTechnique ? '' : ' and your note'} {isTechnique ? 'is' : 'are'} already saved.</span>
+          <span className="tiny muted">This recording{isTechnique ? '' : ' and your note'} {isTechnique ? 'is' : 'are'} already saved.</span>
         </div>
         <div className="row wrap">
           {program ? (

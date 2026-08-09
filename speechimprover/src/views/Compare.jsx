@@ -27,7 +27,7 @@ function Picker({ label, value, onChange, sessions, exclude }) {
     <label className="field" style={{ flex: 1, minWidth: 220 }}>
       {label}
       <select value={value || ''} onChange={(e) => onChange(e.target.value)}>
-        <option value="">Select a session…</option>
+        <option value="">Select a recording…</option>
         {sessions.filter((s) => s.id !== exclude).map((s) => (
           <option key={s.id} value={s.id}>{formatDateTime(s.createdAt)} · {s.exerciseTitle || s.mode} ({s.overall})</option>
         ))}
@@ -54,10 +54,10 @@ export default function Compare({ route, navigate }) {
   }, [a, b]);
 
   if (!sessions.length) {
-    return <EmptyState title="Nothing to compare yet" action={<button className="btn" onClick={() => navigate('practice')}>Record a session</button>} />;
+    return <EmptyState title="Nothing to compare yet" action={<button className="btn" onClick={() => navigate('practice')}>Record something</button>} />;
   }
 
-  const radarAxes = ATTRIBUTES.map((at) => ({ key: at.key, label: at.label.split(' ')[0] }));
+  const radarAxes = ATTRIBUTES.map((at) => ({ key: at.key, label: at.short }));
   const datasets = [
     { label: 'Desirable', color: 'var(--good)', values: REFERENCE_PROFILES.desirable.scores, fill: 'transparent' },
   ];
@@ -77,13 +77,13 @@ export default function Compare({ route, navigate }) {
     <div className="stack">
       <div className="card">
         <div className="row wrap" style={{ gap: 14 }}>
-          <Picker label="Session A" value={aId} onChange={setAId} sessions={sessions} exclude={bId} />
-          <Picker label="Session B" value={bId} onChange={setBId} sessions={sessions} exclude={aId} />
+          <Picker label="Recording A" value={aId} onChange={setAId} sessions={sessions} exclude={bId} />
+          <Picker label="Recording B" value={bId} onChange={setBId} sessions={sessions} exclude={aId} />
         </div>
       </div>
 
       {!a || !b ? (
-        <EmptyState icon="⇄" title="Pick two sessions to compare">Select a session in each slot above. Tip: use this for monthly A/B reviews of the same baseline prompt.</EmptyState>
+        <EmptyState icon="⇄" title="Pick two recordings to compare">Select a recording in each slot above. Tip: use this for monthly A/B reviews of the same baseline prompt.</EmptyState>
       ) : (
         <>
           <div className="grid cols-2">
@@ -103,7 +103,7 @@ export default function Compare({ route, navigate }) {
                   {url ? (
                     <RecordingAudio src={url} />
                   ) : (
-                    <p className="tiny muted">Audio purged or unavailable for this session.</p>
+                    <p className="tiny muted">Audio purged or unavailable for this recording.</p>
                   )}
                 </div>
               );

@@ -165,9 +165,11 @@ export function RadarChart({ axes = [], datasets = [], size = 320, max = 100 }) 
   };
 
   const rings = [0.25, 0.5, 0.75, 1];
+  // Side labels render outward from the rim — widen the viewBox so they don't clip.
+  const pad = 48;
 
   return (
-    <svg viewBox={`0 0 ${size} ${size}`} width="100%" height={size} style={{ maxWidth: size }}>
+    <svg viewBox={`${-pad} 0 ${size + pad * 2} ${size}`} width="100%" height={size} style={{ maxWidth: size + pad * 2 }}>
       {rings.map((ring) => (
         <polygon
           key={ring}

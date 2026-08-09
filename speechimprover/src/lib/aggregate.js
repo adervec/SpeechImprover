@@ -107,6 +107,41 @@ export function demoWeekDelta() {
   return d;
 }
 
+// A practice SESSION is a block of recordings close together in time (morning
+// vs evening = separate sessions). Consecutive takes less than `gapHours` apart
+// belong to the same session. Returns blocks newest-first: { start, end, count, ids }.
+export function groupIntoSessions(sessions, gapHours = 3) {
+  const asc = [...sessions].sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
+  const blocks = [];
+  let cur = null;
+  for (const s of asc) {
+    const t = new Date(s.createdAt).getTime();
+    if (cur && t - cur.end <= gapHours * 3600e3) {
+      cur.end = t;
+      cur.count += 1;
+      cur.ids.push(s.id);
+    } else {
+      cur = { start: t, end: t, count: 1, ids: [s.id] };
+      blocks.push(cur);
+    }
+  }
+  return blocks.reverse();
+}
+
+// Runnable self-check for the session grouping.
+export function demoGroupSessions() {
+  const mk = (iso, id) => ({ id, createdAt: iso });
+  const b = groupIntoSessions([
+    mk('2026-08-09T08:00:00Z', 'a'), mk('2026-08-09T08:10:00Z', 'b'), // morning pair
+    mk('2026-08-09T19:00:00Z', 'c'), // evening = new session
+    mk('2026-08-07T10:00:00Z', 'd'), // earlier day
+  ]);
+  console.assert(b.length === 3, `3 sessions, got ${b.length}`);
+  console.assert(b[0].count === 1 && b[1].count === 2 && b[2].count === 1, 'evening single, morning pair, old single');
+  console.assert(b[1].ids.join() === 'a,b', 'morning pair keeps take ids');
+  return b;
+}
+
 // ---- GitHub-style contribution grid (practice activity heatmap) ----
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 

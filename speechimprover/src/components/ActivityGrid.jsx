@@ -29,7 +29,7 @@ export default function ActivityGrid({ sessions, weeks = 53 }) {
             {columns.flatMap((c) => c.days).map((d) => (
               <span
                 key={d.key}
-                title={d.future ? '' : `${d.key}: ${d.count} session${d.count === 1 ? '' : 's'}`}
+                title={d.future ? '' : `${d.key}: ${d.count} recording${d.count === 1 ? '' : 's'}`}
                 style={{
                   ...cell,
                   background: d.future ? 'transparent' : LEVEL_BG[d.level],
@@ -42,7 +42,7 @@ export default function ActivityGrid({ sessions, weeks = 53 }) {
         </div>
       </div>
       <div className="row spread" style={{ marginTop: 8, alignItems: 'center' }}>
-        <span className="tiny muted">{total} sessions in the last {weeks} weeks</span>
+        <span className="tiny muted">{total} recordings in the last {weeks} weeks</span>
         <span className="row tiny muted" style={{ gap: 4, alignItems: 'center' }}>
           Less
           {LEVEL_BG.map((bg, i) => <span key={i} style={{ ...cell, background: bg, display: 'inline-block' }} />)}

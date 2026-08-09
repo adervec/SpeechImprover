@@ -77,7 +77,7 @@ export default function Trends({ navigate }) {
   }
 
   if (sessions.length < 2) {
-    return <EmptyState icon="📈" title="Not enough history yet">Record at least two sessions to start trending your progress.</EmptyState>;
+    return <EmptyState icon="📈" title="Not enough history yet">Record at least two takes to start trending your progress.</EmptyState>;
   }
 
   return (
