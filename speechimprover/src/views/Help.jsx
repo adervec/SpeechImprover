@@ -217,6 +217,10 @@ export default function Help({ navigate }) {
           <button className="btn" onClick={() => navigate('references', { query: { tab: 'guide' } })}>View it inside the app</button>
         </div>
       </Section>
+
+      <p className="tiny muted" style={{ textAlign: 'center' }}>
+        More apps by this maker — <a href="https://adervec.github.io" target="_blank" rel="noopener noreferrer">adervec.github.io ↗</a>
+      </p>
     </div>
   );
 }
