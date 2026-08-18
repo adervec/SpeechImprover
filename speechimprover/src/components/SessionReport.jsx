@@ -8,7 +8,7 @@ import { AttributeBars } from './ui.jsx';
 import AnnotatedTranscript from './AnnotatedTranscript.jsx';
 import ImprovedVoicePreview from './ImprovedVoicePreview.jsx';
 import RecordingAudio from './RecordingAudio.jsx';
-import { ATTRIBUTES, REFERENCE_PROFILES } from '../lib/analysis/attributes.js';
+import { ATTRIBUTES, REFERENCE_PROFILES, coachingCues } from '../lib/analysis/attributes.js';
 import { formatDuration } from '../lib/format.js';
 
 function MetricRow({ label, value }) {
@@ -16,6 +16,39 @@ function MetricRow({ label, value }) {
     <div className="row spread" style={{ padding: '5px 0', borderBottom: '1px solid var(--border)' }}>
       <span className="muted small">{label}</span>
       <span className="mono small" style={{ fontWeight: 700 }}>{value}</span>
+    </div>
+  );
+}
+
+
+// What was lacking → the physical (neuromuscular) cues that fix it.
+export function CueCard({ scores, metrics, focusAttrs = [], onSelectAttr }) {
+  const items = coachingCues(scores, metrics, focusAttrs);
+  return (
+    <div className="card" style={{ borderLeft: '4px solid var(--accent)' }}>
+      <div className="card-head">
+        <h3>What to work on — neuromuscular cues</h3>
+        <span className="tiny muted">{items.length ? 'weakest first' : 'nothing lacking'}</span>
+      </div>
+      {!items.length ? (
+        <p className="small muted">Every scored attribute is in the good band. Repeat the same prompt tomorrow — consistency is the next skill.</p>
+      ) : (
+        <div className="stack" style={{ gap: 12 }}>
+          {items.map((it) => (
+            <div key={it.key} className="cue-item">
+              <div className="row spread wrap" style={{ gap: 8 }}>
+                <span style={{ fontWeight: 700, cursor: onSelectAttr ? 'pointer' : 'default' }} onClick={() => onSelectAttr && onSelectAttr(it.key)}>
+                  {it.label} {it.focus && <span className="tag">focus</span>}
+                </span>
+                <span className="mono small">{it.score}{it.detail ? ` · ${it.detail}` : ''}</span>
+              </div>
+              <ul className="small cue-list">
+                {it.cues.map((c, i) => <li key={i}>{c}</li>)}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -89,6 +122,23 @@ function TechniqueReport({ session, audioUrl }) {
               {b.hint && <span className="tiny muted" style={{ gridColumn: '1 / -1' }}>{b.hint}</span>}
             </div>
           ))}
+        </div>
+      )}
+
+      {ev.breakdown?.some((b) => !b.ok && b.cues?.length) && (
+        <div className="card" style={{ borderLeft: '4px solid var(--accent)' }}>
+          <div className="card-head"><h3>What to work on — neuromuscular cues</h3><span className="tiny muted">for the targets you missed</span></div>
+          <div className="stack" style={{ gap: 12 }}>
+            {ev.breakdown.filter((b) => !b.ok && b.cues?.length).map((b, i) => (
+              <div key={i} className="cue-item">
+                <div className="row spread wrap" style={{ gap: 8 }}>
+                  <span style={{ fontWeight: 700 }}>{b.label}</span>
+                  <span className="mono small">{b.measured}</span>
+                </div>
+                <ul className="small cue-list">{b.cues.map((c, j) => <li key={j}>{c}</li>)}</ul>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -168,6 +218,8 @@ export default function SessionReport({ session, audioUrl, onSelectAttr, focusAt
           <MetricRow label="Words / fillers" value={`${m.wordCount ?? 0} / ${m.fillerTotal ?? 0}`} />
         </div>
       </div>
+
+      <CueCard scores={scores} metrics={m} focusAttrs={focusAttrs} onSelectAttr={onSelectAttr} />
 
       <div className="grid cols-2">
         <div className="card">

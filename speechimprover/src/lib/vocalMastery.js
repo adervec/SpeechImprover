@@ -7,6 +7,7 @@
 // completion with coaching and self-assessment.
 
 import { clamp } from './format.js';
+import { ATTRIBUTE_MAP } from './analysis/attributes.js';
 
 export const TIERS = [
   { key: 'foundation', label: 'Foundation', blurb: 'Independent control of pitch, resonance and articulation — the raw material every advanced trick is built from.' },
@@ -57,8 +58,14 @@ function fmtMeasured(key, from, v) {
 
 // ---- target builders (kept terse; bands tuned for coaching, not clinical use) ----
 const goLow = (p) => ({ key: 'medianF0Hz', label: 'How low you got', band: { type: 'max', at: pitchCenter(p) * 0.98, full: pitchCenter(p) * 0.72 }, hint: 'Aim well below your everyday pitch.' });
-const goHigh = (p) => ({ key: 'medianF0Hz', label: 'How high you got', band: { type: 'min', at: pitchCenter(p) * 1.05, full: pitchCenter(p) * 1.5 }, hint: 'Aim well above your everyday pitch.' });
-const steady = { key: 'f0StdSemitones', label: 'Pitch steadiness', band: { type: 'max', at: 2.6, full: 0.7 }, hint: 'Hold one rock-steady pitch (low wobble).' };
+const goHigh = (p) => ({ key: 'medianF0Hz', label: 'How high you got', band: { type: 'min', at: pitchCenter(p) * 1.05, full: pitchCenter(p) * 1.5 }, hint: 'Aim well above your everyday pitch.', cues: [
+  'Siren up on “ng” or “oo” — thin the fold contact and let the sound tip forward into the mask (cheekbones), not the throat.',
+  'Keep the larynx neutral (a light yawn feel) rather than yanking it up — high should feel small and buzzy, not squeezed.',
+] });
+const steady = { key: 'f0StdSemitones', label: 'Pitch steadiness', band: { type: 'max', at: 2.6, full: 0.7 }, hint: 'Hold one rock-steady pitch (low wobble).', cues: [
+  'Steady the air first: engage the lower belly gently and let out an even “sss” — wobble in pitch is wobble in airflow.',
+  'Soften the jaw and tongue root; a clenched jaw pulls the pitch around.',
+] };
 const lively = { key: 'f0StdSemitones', label: 'Pitch variation', band: { type: 'min', at: 2, full: 6 }, hint: 'Big, deliberate melodic swings.' };
 const clarityHi = { key: 'clarity', from: 'score', label: 'Clarity held', band: { type: 'min', at: 55, full: 88 }, hint: 'Keep every consonant crisp.' };
 const projectionHi = { key: 'projection', from: 'score', label: 'Projection', band: { type: 'min', at: 55, full: 86 }, hint: 'Stay supported; don’t trail off.' };
@@ -335,6 +342,18 @@ export const getTechnique = (id) => TECHNIQUE_MAP[id] || null;
 const MODE_DUR = { sustain: 16, read: 26, twister: 30, free: 60 };
 
 // Build a Practice-ready exercise object for a technique stage.
+// Which body-level cues to show when a drill target is missed. Metric targets are
+// direction-dependent (low pitch ≠ high pitch), so map by key + band type.
+// ponytail: falls back to the attribute catalog's cues; custom `cues` on a target win.
+const METRIC_CUE_ATTR = { 'medianF0Hz:max': 'resonantDepth', 'f0StdSemitones:min': 'expressiveness', trailingRatio: 'projection', terminalSlope: 'noUptalk', wpm: 'pace', silenceRatio: 'breath' };
+export function cuesFor(t, metrics = {}) {
+  if (t.cues) return t.cues;
+  const attrKey = t.from === 'score' ? t.key : (METRIC_CUE_ATTR[`${t.key}:${t.band?.type}`] || METRIC_CUE_ATTR[t.key]);
+  const a = ATTRIBUTE_MAP[attrKey];
+  if (!a) return [];
+  try { return a.cues(metrics); } catch { return a.cues({}); }
+}
+
 export function getTechniqueExercise(techId, stageRef) {
   const tech = TECHNIQUE_MAP[techId];
   if (!tech) return null;
@@ -378,7 +397,7 @@ export function evaluateStage(stage, metrics = {}, scores = {}, profile = {}) {
   const breakdown = targets.map((t) => {
     const v = t.from === 'score' ? scores?.[t.key] : metrics?.[t.key];
     const sc = scoreBand(v, t.band);
-    return { label: t.label, score: sc, measured: fmtMeasured(t.key, t.from, v), hint: t.hint, ok: sc != null && sc >= 70 };
+    return { label: t.label, score: sc, measured: fmtMeasured(t.key, t.from, v), hint: t.hint, ok: sc != null && sc >= 70, cues: cuesFor(t, metrics) };
   });
   const valid = breakdown.filter((b) => b.score != null);
   const score = valid.length ? Math.round(valid.reduce((a, b) => a + b.score, 0) / valid.length) : null;

@@ -953,3 +953,7 @@ table.data tr:hover td {
   padding: 0 2px;
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent);
 }
+
+.cue-item + .cue-item { border-top: 1px solid var(--border); padding-top: 10px; }
+.cue-list { margin: 6px 0 0 18px; padding: 0; display: grid; gap: 4px; }
+.cue-list li { line-height: 1.4; }
