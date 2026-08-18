@@ -3,7 +3,7 @@ import { useStore } from '../lib/store.jsx';
 import { AttrLabel } from '../components/ui.jsx';
 import { weakestAttributes } from '../lib/aggregate.js';
 import { EXERCISES, BASELINE_SET, CATEGORIES, generateProgram } from '../lib/exercises.js';
-import { ATTRIBUTES } from '../lib/analysis/attributes.js';
+import { ATTRIBUTES, ATTRIBUTE_MAP } from '../lib/analysis/attributes.js';
 import { formatDuration, relativeDay } from '../lib/format.js';
 
 function ExerciseCard({ ex, navigate, highlight = [], last = null }) {
@@ -23,6 +23,7 @@ function ExerciseCard({ ex, navigate, highlight = [], last = null }) {
         <span className="tiny muted">{formatDuration(ex.durationSec)}</span>
       </div>
       <h3 style={{ fontSize: '1rem' }}>{ex.title}</h3>
+      {ex.variants?.length > 1 && <div className="tiny muted">{ex.variants.length} versions · rotates each time</div>}
       {last && (
         <div className="tiny" style={{ color: 'var(--good)', fontWeight: 700 }}>
           ✓ Last done {relativeDay(last.at)}{last.count > 1 ? ` · ${last.count}×` : ''}
@@ -74,10 +75,13 @@ export default function Exercises({ route, navigate }) {
     }
     return m;
   }, [sessions]);
-  const [preview, setPreview] = useState(() => generateProgram(weak.map((w) => w.key)));
+  const [preview, setPreview] = useState(() => generateProgram(weak.map((w) => w.key), sessions));
 
   const highlight = focusFromQuery ? [focusFromQuery] : weakKeys;
   const filtered = filter === 'all' ? EXERCISES : EXERCISES.filter((e) => e.targetAttributes.includes(filter));
+  // Never-done first, then longest-ago — so the library stops leading with the same cards.
+  const byFreshness = (a, b) => (doneByExercise.get(a.id)?.at || '').localeCompare(doneByExercise.get(b.id)?.at || '');
+  const targeted = filtered.filter((e) => e.category === 'Targeted');
 
   function goStep(step, i) {
     navigate('practice', { query: { exercise: step.exercise.id, program: '1', step: String(i) } });
@@ -88,7 +92,7 @@ export default function Exercises({ route, navigate }) {
     navigate('practice', { query: { exercise: step.exercise.id, program: '1', step: String(i) } });
   }
   function newProgram() {
-    const next = generateProgram(weakKeys);
+    const next = generateProgram(weakKeys, sessions);
     setPreview(next);
     startProgram(next, weakKeys);
   }
@@ -184,7 +188,7 @@ export default function Exercises({ route, navigate }) {
               <h2>Your targeted program</h2>
             </div>
             <div className="row">
-              <button className="btn ghost sm" onClick={() => setPreview(generateProgram(weakKeys))}>🎲 Shuffle</button>
+              <button className="btn ghost sm" onClick={() => setPreview(generateProgram(weakKeys, sessions))}>🎲 Shuffle</button>
               <button className="btn primary" onClick={() => beginPreviewAt(0)}>Begin program →</button>
             </div>
           </div>
@@ -229,8 +233,38 @@ export default function Exercises({ route, navigate }) {
         ))}
       </div>
 
-      {CATEGORIES.filter((c) => c !== 'Baseline').map((cat) => {
-        const items = filtered.filter((e) => e.category === cat);
+      {targeted.length > 0 && (
+        <div className="card" style={gradientBg}>
+          <div className="card-head">
+            <div>
+              <div className="tag">Targeted drill sets</div>
+              <h2>One set per area — every drill has several versions</h2>
+            </div>
+            <span className="tiny muted">{targeted.length} drills · fresh ones first</span>
+          </div>
+          <p className="muted small" style={{ marginBottom: 12 }}>
+            Each area of improvement has its own dedicated set. Text rotates automatically: you get the version you've done least recently, and 🎭 emotive cues show <i>how</i> to deliver each line.
+          </p>
+          {ATTRIBUTES.map((a) => {
+            const items = targeted.filter((e) => e.focus === a.key).sort(byFreshness);
+            if (!items.length) return null;
+            return (
+              <div key={a.key} style={{ marginTop: 10 }}>
+                <div className="row spread" style={{ margin: '8px 0' }}>
+                  <h3 style={{ margin: 0, color: highlight.includes(a.key) ? 'var(--accent)' : undefined }}>{a.label}{highlight.includes(a.key) ? ' · focus' : ''}</h3>
+                  <span className="tiny muted">{ATTRIBUTE_MAP[a.key].blurb}</span>
+                </div>
+                <div className="grid cols-3">
+                  {items.map((ex) => <ExerciseCard key={ex.id} ex={ex} navigate={navigate} highlight={highlight} last={doneByExercise.get(ex.id) || null} />)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {CATEGORIES.filter((c) => c !== 'Baseline' && c !== 'Targeted').map((cat) => {
+        const items = filtered.filter((e) => e.category === cat).sort(byFreshness);
         if (!items.length) return null;
         return (
           <div key={cat}>

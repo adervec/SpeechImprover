@@ -7,6 +7,8 @@ import ArticulationModel from '../components/ArticulationModel.jsx';
 import RecordingAudio from '../components/RecordingAudio.jsx';
 import LiveFeedback from '../components/LiveFeedback.jsx';
 import LiveWave from '../components/LiveWave.jsx';
+import EmotiveText, { EmotiveToggle } from '../components/EmotiveText.jsx';
+import { stripTags } from '../lib/emotive.js';
 import { analyzeTranscript, readingCoverage } from '../lib/analysis/speechMetrics.js';
 import { analyzeRecording, assessCompletion } from '../lib/analysis/index.js';
 import { ATTRIBUTE_MAP } from '../lib/analysis/attributes.js';
@@ -18,6 +20,8 @@ import {
   FREE_PROMPTS,
   INTERVIEW_PROMPTS,
   suggestNextExercise,
+  withFreshVariant,
+  freshPrompt,
 } from '../lib/exercises.js';
 import { weakestAttributes } from '../lib/aggregate.js';
 import { getTechniqueExercise, evaluateStage } from '../lib/vocalMastery.js';
@@ -95,14 +99,14 @@ export default function Practice({ route, navigate }) {
     : techniqueId
       ? getTechniqueExercise(techniqueId, route.query.stage ? parseInt(route.query.stage, 10) : 0)
       : queryExerciseId
-        ? getExercise(queryExerciseId) || null
+        ? withFreshVariant(getExercise(queryExerciseId), sessions) || null
         : null;
 
   const [phase, setPhase] = useState('setup'); // setup | recording | analyzing | result
   const [chooserMode, setChooserMode] = useState(queryExercise ? queryExercise.mode : 'free');
   const [customText, setCustomText] = useState('');
   const [selectedPassage, setSelectedPassage] = useState(READING_LIBRARY[0].id);
-  const [freePrompt, setFreePrompt] = useState(FREE_PROMPTS[0]);
+  const [freePrompt, setFreePrompt] = useState(() => freshPrompt(FREE_PROMPTS, sessions));
   const [freeTone, setFreeTone] = useState(TONE_TARGETS[0]);
   const [customPrompt, setCustomPrompt] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState(route.query.project || '');
@@ -390,8 +394,7 @@ export default function Practice({ route, navigate }) {
         suggestion = { kind: 'program', stepIdx: pendingIdx, label: `Resume program: ${program.steps[pendingIdx].exercise.title} →` };
       } else {
         const weakKeys = weakestAttributes(sessions, 2).map((w) => w.key);
-        const recentIds = sessions.slice(0, 8).map((s) => s.exerciseId).filter(Boolean);
-        const ex = suggestNextExercise(weakKeys, result.session.exerciseId, recentIds);
+        const ex = suggestNextExercise(weakKeys, result.session.exerciseId, sessions);
         if (ex) suggestion = { kind: 'single', exerciseId: ex.id, label: `Next: ${ex.title} →` };
       }
     }
@@ -611,8 +614,8 @@ export default function Practice({ route, navigate }) {
                     </select>
                   </label>
                   <button className="btn ghost sm" style={{ alignSelf: 'flex-start' }}
-                    onClick={() => setFreePrompt(FREE_PROMPTS[Math.floor(Math.random() * FREE_PROMPTS.length)])}>
-                    🎲 Shuffle prompt
+                    onClick={() => setFreePrompt(freshPrompt([...FREE_PROMPTS, ...INTERVIEW_PROMPTS].filter((p) => p !== freePrompt), sessions))}>
+                    🎲 Fresh prompt
                   </button>
                   <label className="field">
                     …or make something up — type your own prompt / topic (overrides the picker)
@@ -628,8 +631,20 @@ export default function Practice({ route, navigate }) {
       )}
 
       <div className="card">
-        <div className="card-head">
+        <div className="card-head" style={{ flexWrap: 'wrap', gap: 8 }}>
           <h3>{recording ? 'Recording in progress' : 'Your prompt'}</h3>
+          {activeExercise.prompt && activeExercise.mode !== 'free' && (
+            <EmotiveToggle on={!!settings.emotiveTags} onChange={(v) => updateSettings({ emotiveTags: v })} />
+          )}
+          {!recording && activeExercise.variants?.length > 1 && (
+            <button type="button" className="btn ghost sm" title="Show a different version of this drill's text"
+              onClick={() => setExercise((ex) => {
+                const i = ((ex.variantIndex ?? 0) + 1) % ex.variants.length;
+                return { ...ex, prompt: stripTags(ex.variants[i]), taggedPrompt: ex.variants[i], variantIndex: i };
+              })}>
+              🎲 Another version ({(activeExercise.variantIndex ?? 0) + 1}/{activeExercise.variants.length})
+            </button>
+          )}
           {recording && (
             <span className="badge needs-work" role="status" aria-live="polite">
               ● LIVE · {formatDuration(recorder.elapsedMs / 1000)}
@@ -641,7 +656,11 @@ export default function Practice({ route, navigate }) {
           <p className="muted small" style={{ marginBottom: 12 }}>{activeExercise.instructions}</p>
         )}
         {activeExercise.prompt ? (
-          <div className="prompt-box">{activeExercise.prompt}</div>
+          <div className="prompt-box">
+            {settings.emotiveTags && activeExercise.mode !== 'free'
+              ? <EmotiveText text={activeExercise.prompt} tagged={activeExercise.taggedPrompt} />
+              : activeExercise.prompt}
+          </div>
         ) : (
           <div className="prompt-box muted">Speak freely — no script for this one.</div>
         )}

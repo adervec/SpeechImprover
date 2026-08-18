@@ -957,3 +957,13 @@ table.data tr:hover td {
 .cue-item + .cue-item { border-top: 1px solid var(--border); padding-top: 10px; }
 .cue-list { margin: 6px 0 0 18px; padding: 0; display: grid; gap: 4px; }
 .cue-list li { line-height: 1.4; }
+
+/* ElevenLabs-v3-style emotive tags rendered inline in prompts */
+.etag { display: inline-block; font-size: .7em; font-weight: 700; letter-spacing: .02em; text-transform: lowercase; padding: 1px 7px; margin: 0 4px 0 1px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 18%, var(--surface-2)); color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); vertical-align: 12%; white-space: nowrap; }
+.etag-pause, .etag-short-pause, .etag-long-pause { background: var(--surface-2); color: var(--text-dim); border-color: var(--border); }
+.etag-whispers, .etag-softly { background: color-mix(in srgb, var(--accent-2) 16%, var(--surface-2)); color: var(--accent-2); border-color: color-mix(in srgb, var(--accent-2) 40%, transparent); }
+.etag-excited, .etag-shouting, .etag-emphatic, .etag-cheerfully { background: color-mix(in srgb, var(--warn) 18%, var(--surface-2)); color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
+.etag-sad, .etag-sighs, .etag-slowly, .etag-steady { background: color-mix(in srgb, var(--good) 14%, var(--surface-2)); color: var(--good); border-color: color-mix(in srgb, var(--good) 40%, transparent); }
+.etag-angry { background: color-mix(in srgb, var(--bad) 16%, var(--surface-2)); color: var(--bad); border-color: color-mix(in srgb, var(--bad) 45%, transparent); }
+.etag-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; }
+.btn.ghost.active { border-color: var(--accent); color: var(--accent); }

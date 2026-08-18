@@ -40,6 +40,7 @@ const DEFAULT_SETTINGS = {
   recognitionEnabled: true,
   weeklyGoal: 3,
   autoSubmitRead: false, // auto stop+submit a read exercise once the text is fully read
+  emotiveTags: true, // show ElevenLabs-v3-style delivery tags on provided text
 };
 
 function loadLocal(key, fallback) {
