@@ -8,7 +8,7 @@ checked. Run the check locally with `npm run audit:content` (it also runs in CI)
 
 | Where | What |
 |---|---|
-| `src/lib/drillCatalog.js` | 44 targeted drills / ~150 text variants, warm-up pool |
+| `src/lib/drillCatalog.js` | 65 targeted drills / 263 text variants, 8-item warm-up pool |
 | `src/lib/exercises.js` | 3 featured passages ("The Turning Tide", "How an Engine Works", "Civic Notice"), free-speaking & interview prompts, over-articulation / expressive read lines |
 | `src/lib/troubleSounds.js` | phoneme drill sentences (plus traditional tongue-twisters, see §3) |
 | `src/lib/vocalMastery.js` | mastery-track drill prompts |
@@ -60,8 +60,11 @@ Gutenberg boilerplate or unexpected characters remain.
 ## 3. Traditional / folk material
 
 Tongue-twisters ("She sells seashells", "Peter Piper", "Red leather, yellow
-leather", "Round the rugged rocks…", "A proper copper coffee pot") are
-19th-century or older folk rhymes with no identifiable author — public domain.
+leather", "Round the rugged rocks…", "A proper copper coffee pot", "Unique New
+York", "Good blood, bad blood", "toy boat", "the sixth sick sheikh's sixth
+sheep") are 19th-century or older folk rhymes with no identifiable author —
+public domain. The butter twister is a reworded line after Carolyn Wells'
+"Betty Botter" (1899; d. 1942 — PD worldwide).
 
 ## 4. What is *not* included
 

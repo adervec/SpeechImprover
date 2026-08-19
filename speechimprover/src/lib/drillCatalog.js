@@ -383,6 +383,198 @@ export const DRILLS = [
       '[steady] Twenty, nineteen, eighteen, seventeen, sixteen, fifteen, fourteen, thirteen, twelve, eleven, ten, nine, eight, seven, six, five, four, three, two, one.',
       '[steady] Thirty, twenty-nine, twenty-eight, twenty-seven, twenty-six, twenty-five, twenty-four, twenty-three, twenty-two, twenty-one, twenty…',
     ]),
+
+  // ═════════════ SECOND PASS — more sets, same ten attributes ═════════════
+
+  // ── PACE ──
+  D('pace', 'chunking', 'Thought-group chunking', 'read', 50,
+    'Each [pause] is a micro-pause — a beat, not a breath. One chunk = one idea, said as a single unbroken shape. Rushing is what happens when the chunks run into each other.',
+    [
+      '[steady] The letter arrived on Thursday, [pause] in a green envelope, [pause] with no stamp, [pause] no address, [pause] and only two words inside.',
+      '[steady] What matters here [pause] is not how fast you say it, [pause] but whether the person listening [pause] can hold each piece [pause] long enough to put them together.',
+      '[steady] Turn off the heat, [pause] add the butter, [pause] stir until it melts, [pause] and then — [pause] this is the important part — [pause] leave it alone for five minutes.',
+      '[steady] He came in, [pause] took off his coat, [pause] looked at the table, [pause] looked at us, [pause] and said nothing at all.',
+    ]),
+  D('pace', 'tempo', 'Three tempos, same text', 'read', 60,
+    'Read it three times: deliberately SLOW (~100 wpm), normal (~130), then a touch quick (~160). Same words, three speeds. Knowing what each one feels like is what gives you a throttle instead of one stuck gear.',
+    [
+      '[steady] The ferry leaves at six. [pause] It is a forty-minute crossing, [pause] longer if the wind is up. [pause] Bring a coat you do not mind getting wet.',
+      '[steady] There are three ways into the old town: [pause] the bridge, [pause] the tunnel, [pause] and the long way round by the harbour. [pause] Only one of them is quick, [pause] and it is not the one you think.',
+      '[steady] Coffee, [pause] then email, [pause] then the difficult call. [pause] In that order. [pause] Any other order and the day gets away from you before nine.',
+    ]),
+
+  // ── CLARITY ──
+  D('clarity', 'clusters', 'Consonant clusters', 'read', 50,
+    'Clusters are where word endings go to die. Say each one slowly enough to hear every consonant — “sixths” is s-i-k-s-th-s — then again at speaking pace without dropping a single one.',
+    [
+      '[emphatic] Sixths, [pause] twelfths, [pause] strengths, [pause] texts, [pause] asked, [pause] glimpsed, [pause] months. [pause] He ASKED for the TEXTS and GLIMPSED the DEPTHS.',
+      '[emphatic] STRENGTHS and WEAKNESSES, [pause] FACTS and ARTEFACTS, [pause] the CONTEXTS of the CONFLICTS, [pause] the INSTINCTS of the ARCHITECTS.',
+      '[emphatic] She SCULPTS, [pause] he PROMPTS, [pause] they ADAPT, [pause] we ATTEMPT. [pause] The film PROMPTS the SCRIPTS that the ACTS DEMAND.',
+      '[emphatic] The world’s worst thirst. [pause] Twelfths and fifths and hundredths. [pause] The sixth sick sheikh’s sixth sheep.',
+    ]),
+  D('clarity', 'pencil', 'Pen-between-the-teeth read', 'twister', 40,
+    'Hold a pen (or a cork) gently between your front teeth and read the line — it will be a mess, that is the point. Take it out and read again: the articulators now over-work in exactly the right way. Never bite hard; two rounds is plenty.',
+    [
+      '[emphatic] Late in the lane the pale gate rattled, [pause] and the mail train made the same complaint again.',
+      '[emphatic] Betty bought a bit of better butter, [pause] but the bit of butter Betty bought was bitter.',
+      '[emphatic] Around the rugged rock the ragged rascal ran, [pause] and rested where the road ran round.',
+      '[emphatic] Good blood, bad blood. [pause] Unique New York. [pause] Toy boat, [pause] toy boat, [pause] toy boat.',
+    ]),
+  D('clarity', 'schwa', 'Swallowed syllables', 'read', 45,
+    'These words lose their middles when we rush — “probly”, “comftable”, “libry”. Say each one with EVERY syllable present, then use it in the sentence at normal speed with the syllable still there.',
+    [
+      '[emphatic] Prob-ab-ly. [pause] Com-fort-a-ble. [pause] Lib-rar-y. [pause] Par-tic-u-lar-ly. [pause] It is PROBABLY the most COMFORTABLE chair in the LIBRARY, [pause] PARTICULARLY in winter.',
+      '[emphatic] Gov-ern-ment. [pause] Ev-e-ry. [pause] Fam-i-ly. [pause] In-ter-est-ing. [pause] EVERY FAMILY had an INTERESTING opinion about the GOVERNMENT.',
+      '[emphatic] Vul-ner-a-ble. [pause] Tem-per-a-ture. [pause] Nec-es-sa-ry. [pause] Sep-a-rate. [pause] It is NECESSARY to keep the TEMPERATURE SEPARATE from the argument.',
+      '[emphatic] Def-i-nite-ly. [pause] Gen-er-al-ly. [pause] Re-mem-ber. [pause] Choc-o-late. [pause] I DEFINITELY REMEMBER that GENERALLY there was CHOCOLATE.',
+    ]),
+
+  // ── FILLERS ──
+  D('fillers', 'bridge', 'Signposts, not “um”', 'free', 60,
+    'Put a SIGNPOST where an “um” would go — “two reasons”, “first”, “which brings me to”, “the short answer is”. A signpost buys the same thinking time and sounds like structure instead of static.',
+    [
+      'Use “The short answer is… and the long answer is…”: was learning to drive worth it?',
+      'Use “There are two reasons. First… Second…”: why do you live where you live?',
+      'Use “Let me give you an example”: what makes a good manager?',
+      'Use “Before I answer that, one bit of context…”: how do you plan your week?',
+      'Use “Three things.” and count them off: what would you change about your commute?',
+    ]),
+  D('fillers', 'restart', 'No restarts', 'free', 60,
+    'One take. If a sentence goes wrong, FINISH it anyway and start the next one cleanly. Backing up to re-say a sentence is a filler with better manners — this drill bans it.',
+    [
+      'Describe the last journey you made, start to finish. No restarts.',
+      'Explain a decision you made this week and why. No restarts.',
+      'Retell the plot of a film or book from memory, badly. No restarts.',
+      'Give a sixty-second tour of your home, room by room. No restarts.',
+      'Describe your job to someone who has never heard of it. No restarts.',
+    ]),
+
+  // ── VARIETY / NON-REPETITION ──
+  D('nonRepetition', 'fiveways', 'Same idea, five ways', 'free', 60,
+    'Say the SAME idea five times in completely different words. No content word from an earlier version may come back. The fifth one is usually the best one — that is the point.',
+    [
+      'Idea: “I disagree with this plan.” Five ways.',
+      'Idea: “The food was excellent.” Five ways.',
+      'Idea: “I need more time.” Five ways.',
+      'Idea: “This is harder than it looks.” Five ways.',
+      'Idea: “Thank you for your help.” Five ways.',
+    ]),
+  D('nonRepetition', 'alphabet', 'Alphabet story', 'free', 75,
+    'Tell a story where each sentence begins with the next letter of the alphabet — A, B, C, D… The constraint forces a new opening every time and kills your two favourite sentence shapes.',
+    [
+      'Start at A: a story about a lost parcel.',
+      'Start at A: the worst holiday ever taken.',
+      'Start at M (M, N, O, P…): a stranger at the door.',
+      'Start at A: how you got to where you are now.',
+      'Start at S (S, T, U, V…): something that went wrong in a kitchen.',
+    ]),
+
+  // ── RESONANT DEPTH ──
+  D('resonantDepth', 'straw', 'Straw phonation (SOVT)', 'breath', 60,
+    'Hum through a drinking straw — or through tightly pursed lips — for twenty seconds, gliding gently up and down. Then take it away and speak the line immediately: the ease should still be there. Two rounds, never loud.',
+    [
+      'Hum through the straw, glide low → high → low. [pause] Straw out: “The evening train is always late, and nobody seems to mind.”',
+      'Hum through the straw on one steady pitch for twenty seconds. [pause] Straw out: “Good morning. My name is — , and I am glad you came.”',
+      'Five slow straw sirens on “oo”. [pause] Straw out: “There is no hurry. We have the whole afternoon.”',
+    ]),
+  D('resonantDepth', 'glide', 'Downward glide into speech', 'read', 45,
+    'Start each line on a high gentle “ooo”, glide down to the bottom of your COMFORTABLE range, and begin speaking from there — that note is your true speaking floor. No pushing; if it creaks, start a note higher.',
+    [
+      '[softly] Ooo… (glide down) [slowly] Right. [pause] Let’s look at what we actually have.',
+      '[softly] Ooo… (glide down) [slowly] Thank you all for coming out on a night like this.',
+      '[softly] Ooo… (glide down) [slowly] The answer is no, [pause] and I will tell you exactly why.',
+      '[softly] Ooo… (glide down) [slowly] Sit down. [pause] This will take a few minutes.',
+    ]),
+
+  // ── EXPRESSIVENESS ──
+  D('expressiveness', 'emphasis', 'Stress-shift (seven meanings)', 'read', 60,
+    'Read the line once for each CAPITALISED version, hammering that one word. The meaning changes every single time. One stressed word does all that work — this drill is emphasis in miniature.',
+    [
+      '[emphatic] I never said she stole my money. [pause] I NEVER said she stole my money. [pause] I never SAID she stole my money. [pause] I never said SHE stole my money. [pause] I never said she STOLE my money. [pause] I never said she stole MY money. [pause] I never said she stole my MONEY.',
+      '[emphatic] WE are not doing that today. [pause] We are NOT doing that today. [pause] We are not DOING that today. [pause] We are not doing THAT today. [pause] We are not doing that TODAY.',
+      '[emphatic] SHE brought the wrong file to the meeting. [pause] She BROUGHT the wrong file to the meeting. [pause] She brought the WRONG file to the meeting. [pause] She brought the wrong FILE to the meeting. [pause] She brought the wrong file to the MEETING.',
+      '[emphatic] I asked for a small coffee. [pause] I ASKED for a small coffee. [pause] I asked FOR a small coffee. [pause] I asked for a SMALL coffee. [pause] I asked for a small COFFEE.',
+    ]),
+  D('expressiveness', 'subtext', 'One line, four intentions', 'read', 50,
+    'Same words, four reasons for saying them. Change nothing but WHY — pitch, pace and warmth follow on their own. Decide the intention before you open your mouth.',
+    [
+      '[warmly] “You’re still here.” — to reassure. [pause] [curious] “You’re still here.” — to ask. [pause] [angry] “You’re still here.” — to accuse. [pause] [laughs] “You’re still here.” — to tease.',
+      '[softly] “It’s fine.” — to comfort. [pause] [sad] “It’s fine.” — to hide something. [pause] [sarcastic] “It’s fine.” — to make a point. [pause] [emphatic] “It’s fine.” — to close the subject.',
+      '[cheerfully] “We need to talk.” — with good news. [pause] [nervous] “We need to talk.” — with bad. [pause] [warmly] “We need to talk.” — with love. [pause] [emphatic] “We need to talk.” — with authority.',
+      '[curious] “Do you know what time it is?” — genuinely asking. [pause] [angry] “Do you know what time it is?” — a parent at midnight. [pause] [excited] “Do you know what time it is?” — it is your birthday. [pause] [whispers] “Do you know what time it is?” — in a dark corridor.',
+    ]),
+
+  // ── NON-NASAL ──
+  D('nonNasal', 'ngrelease', '“Ng” → “ah” release', 'read', 40,
+    'Sing “ng” as in “sing” — the palate is DOWN and the sound is in the nose. Now drop the jaw and open into “ah”: that swap IS the palate lifting. Do it before every line and keep the lift through the words.',
+    [
+      '[steady] Ng… [pause] AH. [pause] [warmly] The lawn was long and the morning was warm.',
+      '[steady] Ng… [pause] AH. [pause] [warmly] Across the broad, calm water, not a sound.',
+      '[steady] Ng… [pause] AH. [pause] [warmly] Coffee, toast, and the whole day yet to go.',
+      '[steady] Ng… [pause] AH. [pause] [warmly] The door opened onto a hall full of light.',
+    ]),
+  D('nonNasal', 'pinch', 'Nose-pinch check', 'free', 50,
+    'Rest a finger and thumb lightly on your nostrils — do not squeeze. Speak the prompt: only m, n and ng should buzz your fingers. If everything buzzes, yawn to lift the palate and start again.',
+    [
+      'Describe what you had for breakfast.',
+      'Say the days of the week, then the months of the year.',
+      'Describe the view from your nearest window.',
+      'Give directions to the nearest bus stop or station.',
+      'Read out five things you can see, slowly.',
+    ]),
+
+  // ── NO UPTALK ──
+  D('noUptalk', 'lists', 'List intonation', 'read', 45,
+    'A list rises on every item and FALLS on the last — that fall is how a listener knows you have finished. Rise, rise, rise, fall. Nothing else in the sentence may rise.',
+    [
+      '[steady] We need bread, [pause] milk, [pause] eggs, [pause] and COFFEE. [pause] We need it before six, [pause] before the shop shuts, [pause] and before the RAIN.',
+      '[steady] The plan has three parts: [pause] research, [pause] build, [pause] and LAUNCH. [pause] The launch is in MARCH.',
+      '[steady] Red, [pause] amber, [pause] GREEN. [pause] Monday, [pause] Tuesday, [pause] WEDNESDAY. [pause] Ready, [pause] steady, [pause] GO.',
+      '[steady] Bring a torch, [pause] a map, [pause] a spare pair of socks, [pause] and something SWEET. [pause] Leave everything else at HOME.',
+    ]),
+  D('noUptalk', 'answers', 'Answer, land, stop', 'free', 60,
+    'Answer each question as a full falling statement. No “I think…?”, no rising ends, no “…if that makes sense?”. Say it, land it, stop.',
+    [
+      'What time does your day usually start? What is the best route to your work? What did you do last weekend? What are you having for dinner?',
+      'Where did you grow up? What was your first job? What do you do now? What would you rather be doing?',
+      'State your position on the last thing you disagreed about — four times, four different ways, all landing.',
+      'What are you good at? What are you not good at? What are you working on? What have you decided to stop doing?',
+    ]),
+
+  // ── PROJECTION ──
+  D('projection', 'distance', 'Distance ladder', 'read', 50,
+    'Same line three times: to someone at arm’s length, to the far side of the room, to a person twenty metres away. The volume comes from BREATH and an open throat, never a squeeze — if it hurts, you are pushing.',
+    [
+      '[softly] The bus leaves in five minutes. [pause] [steady] The bus leaves in five minutes. [pause] [shouting] The BUS leaves in FIVE MINUTES!',
+      '[softly] Dinner is ready. [pause] [steady] Dinner is ready. [pause] [shouting] DINNER is READY!',
+      '[softly] Take the next left. [pause] [steady] Take the next left. [pause] [shouting] Take the NEXT LEFT!',
+      '[softly] I need a hand with this. [pause] [steady] I need a hand with this. [pause] [shouting] I need a HAND with THIS!',
+    ]),
+  D('projection', 'call', 'Call, then converse', 'free', 50,
+    'Call to someone far away — really call, from the belly, not a throat-shout — then drop straight into normal conversation with them without a break. The goal is a big voice that costs you nothing.',
+    [
+      'Call someone in from the garden, then tell them what is for dinner.',
+      'Call across a car park to a friend, then ask how their week was.',
+      'Call a dog back from the far end of a field, then praise it quietly.',
+      'Call “last orders” across a noisy room, then take one order politely.',
+      'Call up a stairwell to someone on the top floor, then explain why.',
+    ]),
+
+  // ── BREATH & PAUSING ──
+  D('breath', 'silent', 'Silent inhale', 'breath', 45,
+    'Every breath here must be SILENT — an audible gasp is the most obvious nervous habit on a recording. Open the throat as at the start of a yawn, inhale low through the mouth, and hear nothing.',
+    [
+      'Four silent inhales, each followed by a long “sss”. Listen back — the inhales should be inaudible.',
+      'Count aloud one to five, silent breath, six to ten, silent breath, eleven to fifteen.',
+      'Say one sentence, silent breath, say it again, silent breath, say it a third time.',
+    ]),
+  D('breath', 'ribs', 'Lateral rib breathing', 'breath', 45,
+    'Hands on the lower ribs, fingers forward. Breathe so the ribs push your hands OUT sideways — shoulders still, belly soft. This is the capacity most speakers never use.',
+    [
+      'Five lateral breaths — ribs push the hands out. Then five more with a long “ffff” on the way out.',
+      'Arms overhead on the inhale; lower them slowly on a long “sss”. Four rounds.',
+      'Lean forward over a table with hands on the lower back ribs — feel the BACK expand. Five breaths.',
+    ]),
 ];
 
 // Warm-up pool: rotated into programs so it isn't breath + hum every single day.
@@ -393,6 +585,8 @@ export const WARMUPS = [
   { id: 'warm-siren', title: 'Sirens', attrs: ['expressiveness', 'resonantDepth'], instructions: 'On “ng” or “oo”, slide smoothly from your lowest comfortable note to your highest and back — an ambulance, not a staircase. Three times.', prompt: 'Ng-oooo — low → high → low, smooth.' },
   { id: 'warm-jaw', title: 'Jaw & tongue release', attrs: ['clarity', 'nonNasal'], instructions: 'Massage the jaw hinge, let the jaw hang, then “yah-yah-yah” with a floppy jaw. Stick the tongue out and “lah-lah-lah”. Silly is correct.', prompt: 'Yah-yah-yah-yah… lah-lah-lah-lah… (loose jaw, loose tongue).' },
   { id: 'warm-tongue', title: 'Tongue trill & twist', attrs: ['clarity'], instructions: 'Rolled “rrrr” (or a fast “d-d-d” if you can’t roll), then “ta-ka-ta-ka” quickly and evenly for ten seconds.', prompt: 'Rrrrrrrr… ta-ka-ta-ka-ta-ka-ta-ka…' },
+  { id: 'warm-posture', title: 'Posture & alignment reset', attrs: ['projection', 'breath'], instructions: 'Feet under hips, knees soft, ribs stacked over the pelvis, crown of the head floating up. Roll the shoulders back and down three times, then let the jaw hang for five seconds. Speak one sentence from that new shape.', prompt: 'Tall, shoulders down, jaw loose — then: “Good morning. I am ready to begin.”' },
+  { id: 'warm-stretch', title: 'Yawn-stretch & neck release', attrs: ['resonantDepth', 'nonNasal'], instructions: 'Three big real yawns — nothing opens the throat like a yawn. Then slow half-circles of the head, ear toward chest toward ear, twice each way. Finish on one long sigh.', prompt: 'Yawn… yawn… yawn. Head rolls, both ways. Then: ahhhhh.' },
 ];
 
 export function demoDrills() {
@@ -402,5 +596,6 @@ export function demoDrills() {
   const ids = DRILLS.map((d) => d.id);
   console.assert(new Set(ids).size === ids.length, 'unique ids');
   console.assert(DRILLS.filter((d) => d.attr === 'expressiveness').every((d) => d.variants.every((v) => /\[/.test(v))), 'expressive drills are tagged');
+  console.assert([...attrs].every((a) => DRILLS.filter((d) => d.attr === a).length >= 5), 'every attribute has a deep set (5+ drills)');
   return { drills: DRILLS.length, variants: DRILLS.reduce((n, d) => n + d.variants.length, 0) };
 }
