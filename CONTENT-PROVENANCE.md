@@ -9,8 +9,8 @@ checked. Run the check locally with `npm run audit:content` (it also runs in CI)
 | Where | What |
 |---|---|
 | `src/lib/drillCatalog.js` | 65 targeted drills / 263 text variants, 8-item warm-up pool |
-| `src/lib/exercises.js` | 3 featured passages ("The Turning Tide", "How an Engine Works", "Civic Notice"), free-speaking & interview prompts, over-articulation / expressive read lines |
-| `src/lib/troubleSounds.js` | phoneme drill sentences (plus traditional tongue-twisters, see §3) |
+| `src/lib/exercises.js` | 3 featured passages ("The Turning Tide", "How an Engine Works", "Civic Notice"), free-speaking & interview prompts, 22 real-world scenario / presentation briefs, over-articulation / expressive read lines |
+| `src/lib/troubleSounds.js` | 18 phoneme drill sets — cues, minimal pairs, sound-dense sentences (plus traditional tongue-twisters, see §3) |
 | `src/lib/vocalMastery.js` | mastery-track drill prompts |
 | `src/lib/analysis/attributes.js` | neuromuscular cue text |
 | `public/baseline-guide.html` | the Baseline guide (project author's own text) |

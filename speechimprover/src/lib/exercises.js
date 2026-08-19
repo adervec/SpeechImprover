@@ -113,6 +113,78 @@ export const INTERVIEW_PROMPTS = [
   'Convince me to fund your idea — you have one minute.',
 ];
 
+// Real-world speaking situations. Unlike the free prompts these come with a
+// stake and a shape: who you are talking to, and what has to be true when you
+// stop talking.
+export const SCENARIOS = [
+  { id: 'voicemail', title: 'Scenario — a voicemail that gets returned', sec: 45, attrs: ['fillers', 'clarity', 'pace'],
+    setup: 'Thirty seconds, no second take. Say who you are, why you are calling, what you need, and your number — twice, slowly, at the end. Most voicemails fail because the number is unintelligible and the ask is missing.',
+    prompt: 'Leave a voicemail for someone who does not know you, asking for fifteen minutes of their time next week.' },
+  { id: 'complaint', title: 'Scenario — a calm complaint', sec: 75, attrs: ['noUptalk', 'projection', 'pace'],
+    setup: 'Firm, low, unhurried. State the facts, then the impact, then exactly what you want done. No apologising for complaining, no rising ends — a request that rises sounds like a request to be refused.',
+    prompt: 'Your order arrived damaged for the second time. Explain it at the counter and say what you want done about it.' },
+  { id: 'apology', title: 'Scenario — an apology that lands', sec: 60, attrs: ['fillers', 'resonantDepth', 'noUptalk'],
+    setup: 'Name the thing, own it without excuses, say what changes, then stop. Every “but” restarts the clock. Slow and low — a fast apology sounds like you want it over with.',
+    prompt: 'You missed something important that mattered to someone. Apologise properly, in under a minute.' },
+  { id: 'feedback', title: 'Scenario — difficult feedback to a peer', sec: 90, attrs: ['pace', 'noUptalk', 'fillers'],
+    setup: 'Specific observation, its effect, then a question. Land each of the three; the pause after the observation is the hardest silence in this app and the most useful one.',
+    prompt: 'A colleague keeps missing shared deadlines. Tell them, face to face, without softening it into meaninglessness.' },
+  { id: 'sayno', title: 'Scenario — saying no', sec: 45, attrs: ['noUptalk', 'fillers', 'projection'],
+    setup: 'One sentence of no, one sentence of why, one sentence of what you CAN do. Then silence — do not fill it, do not negotiate against yourself.',
+    prompt: 'Turn down a request you would normally say yes to, without hedging or over-explaining.' },
+  { id: 'smalltalk', title: 'Scenario — small talk with a stranger', sec: 75, attrs: ['expressiveness', 'nonRepetition', 'fillers'],
+    setup: 'Keep it moving: observation, question, answer, follow-up. Warmth lives in pitch range — a flat voice reads as “leave me alone” even when the words are friendly.',
+    prompt: 'You are stuck in a slow queue next to someone. Sixty seconds of genuinely pleasant small talk.' },
+  { id: 'introduce', title: 'Scenario — introducing two people', sec: 45, attrs: ['clarity', 'expressiveness', 'projection'],
+    setup: 'Names clearly (this is where clarity actually matters), one hook each, then a shared thread to leave them talking. Then get out of the way.',
+    prompt: 'Introduce two people who have never met and give them something to talk about.' },
+  { id: 'whatido', title: 'Scenario — “so what do you do?”', sec: 45, attrs: ['nonRepetition', 'pace', 'expressiveness'],
+    setup: 'Thirty seconds, no jargon, aimed at a friendly non-expert. Lead with the problem you solve, not your job title. If they would ask a follow-up, you have won.',
+    prompt: 'Explain what you do at a party, to someone from a completely different field.' },
+  { id: 'raise', title: 'Scenario — asking for a raise', sec: 90, attrs: ['noUptalk', 'projection', 'fillers'],
+    setup: 'State the number early and let it sit. Evidence, not feelings. Every filler here reads as doubt about your own case — pause instead.',
+    prompt: 'Make the case for a raise to your manager, including the specific figure.' },
+  { id: 'deadline', title: 'Scenario — renegotiating a deadline', sec: 75, attrs: ['pace', 'fillers', 'noUptalk'],
+    setup: 'Bad news first, no burying it. Then options — two, with a recommendation. Steady pace: rushing this makes it sound like an excuse.',
+    prompt: 'Tell a client the date is going to move, and take them through what you propose instead.' },
+  { id: 'teach', title: 'Scenario — teach a skill in ninety seconds', sec: 90, attrs: ['pace', 'clarity', 'nonRepetition'],
+    setup: 'Steps in order, one idea per sentence, a pause between each. Teaching pace is slower than conversation pace — noticeably, deliberately slower.',
+    prompt: 'Teach something you can actually do — a knot, a recipe, a shortcut, a stretch — to a complete beginner.' },
+  { id: 'badnews', title: 'Scenario — bad news to a team', sec: 90, attrs: ['resonantDepth', 'noUptalk', 'projection'],
+    setup: 'Low, steady, unhurried. Say the thing in the first ten seconds, then what it means, then what happens next. Warmth without wobble; the room takes its cue from your voice, not your words.',
+    prompt: 'Tell a team that a project they have worked on for months has been cancelled.' },
+  { id: 'hostile', title: 'Scenario — the hostile question', sec: 60, attrs: ['pace', 'fillers', 'noUptalk'],
+    setup: 'Breathe. Repeat the question in neutral words. Answer the honest version of it. Speed and pitch both rise under attack — deliberately drop both.',
+    prompt: 'Someone challenges your work in front of others, with an edge in their voice. Answer them.' },
+  { id: 'chair', title: 'Scenario — opening a meeting', sec: 60, attrs: ['projection', 'noUptalk', 'clarity'],
+    setup: 'Purpose, agenda, time, first item. Four sentences, all falling. This is a job for volume and structure, not charm.',
+    prompt: 'Open a meeting of eight people who are all still talking to each other.' },
+  { id: 'qanda', title: 'Scenario — Q&A bridging', sec: 75, attrs: ['fillers', 'pace', 'noUptalk'],
+    setup: 'Answer the question honestly in one sentence, then bridge back to your message: “what that comes down to is…”. Bridge, do not dodge — an obvious dodge costs more than the question did.',
+    prompt: 'You have just presented. Take three imagined questions, answer each in about twenty seconds, and bridge each back to your main point.' },
+  { id: 'idontknow', title: 'Scenario — “I don’t know”', sec: 45, attrs: ['fillers', 'noUptalk', 'resonantDepth'],
+    setup: 'Say it plainly, say what you DO know, say how you will find out and by when. Flat and calm. Waffle here is what people actually remember.',
+    prompt: 'You are asked something in public that you genuinely do not know the answer to. Three times, three different questions.' },
+  { id: 'hook', title: 'Presentation — five openings', sec: 90, attrs: ['expressiveness', 'projection', 'pace'],
+    setup: 'Open the SAME talk five ways: a question, a number, a thirty-word story, a provocation, and four seconds of silence then one sentence. Notice which one changes your voice most.',
+    prompt: 'Pick any topic you know. Give five different first-fifteen-seconds for it.' },
+  { id: 'transitions', title: 'Presentation — transitions', sec: 60, attrs: ['pace', 'noUptalk', 'nonRepetition'],
+    setup: 'Land the previous point, pause, then signpost the next: “that brings me to…”, “so the second thing is…”. No “so, yeah”, no trailing off, no rising ends. The pause is the transition; the words just label it.',
+    prompt: 'Move between four sections of an imaginary talk — the transitions only, not the content.' },
+  { id: 'closing', title: 'Presentation — the close', sec: 60, attrs: ['noUptalk', 'projection', 'resonantDepth'],
+    setup: 'Summary in one sentence, the ask in one sentence, then stop and stay silent for three full seconds. Most closes are ruined by talking past the ending.',
+    prompt: 'Close a talk three different ways: with a call to action, with a return to your opening image, and with a single sentence.' },
+  { id: 'toastreal', title: 'Scenario — a toast with a story in it', sec: 90, attrs: ['expressiveness', 'projection', 'nonRepetition'],
+    setup: 'One specific story, one turn, one line about the person, glass up. Specifics land; adjectives do not. Aim it at the back of a loud room.',
+    prompt: 'Toast someone you actually know, built around one real story about them.' },
+  { id: 'emergency', title: 'Scenario — the emergency call', sec: 60, attrs: ['clarity', 'pace', 'noUptalk'],
+    setup: 'Location first, then what happened, then who is involved, then your name. Slow, loud, complete words. This is the highest-stakes clarity drill there is.',
+    prompt: 'Report an incident to an emergency operator: where, what, who, and your name — clearly enough to be right the first time.' },
+  { id: 'story', title: 'Scenario — a story with a turn', sec: 90, attrs: ['expressiveness', 'nonRepetition', 'pace'],
+    setup: 'Setup, then “and then”, then the turn, then what it meant — in that order. Slow down before the turn and pause right after it; that pause is where the listener feels it.',
+    prompt: 'Tell a true sixty-second story from your own life that has one genuine surprise in it.' },
+];
+
 export const TONGUE_TWISTERS = [
   { id: 'tw-s', sound: 'S / sh', text: 'She sells seashells by the seashore.', attr: 'clarity' },
   { id: 'tw-r', sound: 'R', text: 'Round the rugged rocks the ragged rascal ran.', attr: 'clarity' },
@@ -229,6 +301,18 @@ export const EXERCISES = [
       'Once upon a time, in a kingdom high above the clouds, there lived a very SMALL dragon with a very BIG voice — and oh, how that voice could ROAR!',
     taggedPrompt: '[warmly] Once upon a time, [pause] in a kingdom HIGH above the clouds, [pause] there lived a very SMALL dragon [pause] with a very BIG voice — [excited] and OH, [pause] how that voice could ROAR!',
   },
+  // --- real-world scenarios & presentation craft ---
+  ...SCENARIOS.map((s) => ({
+    id: `scenario-${s.id}`,
+    title: s.title,
+    category: 'Scenario',
+    mode: 'free',
+    durationSec: s.sec || 75,
+    targetAttributes: s.attrs,
+    guideSection: '03 · Real-world practice',
+    instructions: s.setup,
+    prompt: s.prompt,
+  })),
   // --- targeted drill sets: one rich set per attribute (drillCatalog.js) ---
   ...DRILLS.map((d) => ({
     id: d.id,
@@ -302,6 +386,7 @@ export const CATEGORIES = [
   'Reading',
   'Free / improv',
   'High-pressure',
+  'Scenario',
   'Targeted',
   'Baseline',
 ];
@@ -381,6 +466,11 @@ export function generateProgram(weakAttributes = [], sessions = []) {
     const ex = pickForAttribute(t, used, idx, (e) => e.category === 'Targeted') || pickForAttribute(t, used, idx);
     if (ex) program.push(withFreshVariant(ex, sessions, idx));
   }
+  // One real-world scenario for transfer (also fills the free-speak slot below).
+  const scen = pickForAttribute(targets[0], used, idx, (e) => e.category === 'Scenario')
+    || pickForAttribute('fillers', used, idx, (e) => e.category === 'Scenario');
+  if (scen) program.push(scen);
+
   // Ensure at least one free-speak drill for transfer.
   if (!program.some((e) => e.mode === 'free')) {
     const free = pickForAttribute('fillers', used, idx, (e) => e.mode === 'free');
@@ -430,6 +520,7 @@ export function demo() {
   const prog = generateProgram(['resonantDepth'], [{ createdAt: now, exerciseId: 'warm-breath' }, { createdAt: now, exerciseId: 'warm-hum' }]);
   console.assert(!prog.slice(0, 2).some((e) => e.id === 'warm-breath' || e.id === 'warm-hum'), 'warm-ups rotate: ' + prog.slice(0, 2).map((e) => e.id));
   console.assert(prog.some((e) => e.category === 'Targeted' && e.targetAttributes[0] === 'resonantDepth'), 'program uses the targeted depth set');
+  console.assert(prog.some((e) => e.category === 'Scenario'), 'program ends with a real-world scenario');
   console.assert(freshPrompt(['a', 'b'], [{ createdAt: now, prompt: 'a' }]) === 'b', 'fresh prompt skips recent');
   const a = suggestNextExercise(['fillers'], 'free-0', [{ createdAt: now, exerciseId: 'free-0' }]);
   console.assert(a && a.id !== 'free-0' && a.targetAttributes.includes('fillers'), 'targets weakest, skips excluded');

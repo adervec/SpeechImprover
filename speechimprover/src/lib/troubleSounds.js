@@ -117,6 +117,94 @@ export const TROUBLE_SOUNDS = [
     prompt:
       'He will sit on the seat. These ships let the sheep slip and sleep. Please fill the feeling, leave the living, and heat what you hit.',
   },
+  {
+    id: 'f-th',
+    label: 'F vs TH — free / three',
+    ipa: '/f/ vs /θ/',
+    viseme: 'TH',
+    tip: 'For “f” the upper teeth touch the lower LIP; for “th” the tongue tip comes out between the teeth. Look in a mirror — you should see the tongue for every “th”.',
+    commonError: 'replacing “th” with “f”, so “three” becomes “free” and “both” becomes “boaf”.',
+    pairs: ['free / three', 'first / thirst', 'fought / thought', 'deaf / death', 'roof / Ruth'],
+    prompt:
+      'Three free thoughts: first the thirst, then the fourth path, then both. Ruth thought the roof was thin; her father found it thick.',
+  },
+  {
+    id: 'b-v',
+    label: 'B vs V — berry / very',
+    ipa: '/b/ vs /v/',
+    viseme: 'FV',
+    tip: 'For “b” both lips press and POP apart. For “v” the lips never meet: upper teeth rest on the lower lip and the air keeps flowing with voice behind it.',
+    commonError: 'popping the lips on “v”, so “very” sounds like “berry” and “vote” like “boat”.',
+    pairs: ['berry / very', 'boat / vote', 'ban / van', 'curb / curve', 'marble / marvel'],
+    prompt:
+      'Very berry. Vote for the boat. The van was banned. Drive the curve by the curb and marvel at the marble.',
+  },
+  {
+    id: 'p-b',
+    label: 'P vs B — aspiration & voicing',
+    ipa: '/p/ vs /b/',
+    viseme: 'MBP',
+    tip: 'Both close the lips; “p” releases a puff of air with no voice, “b” has voice and no puff. Hold a hand a few centimetres from your mouth — it should feel the puff on every “p” and nothing on “b”.',
+    commonError: 'a “p” with no air behind it, which listeners hear as “b” (and vice versa).',
+    pairs: ['pat / bat', 'pear / bear', 'cap / cab', 'rope / robe', 'simple / symbol'],
+    prompt:
+      'Pat the bat. A pear beside a bear. The cap is in the cab, the rope on the robe. Peter put a pound of pepper in the paper bag.',
+  },
+  {
+    id: 't-flap',
+    label: 'Middle T — water / better',
+    ipa: '/t/ → [ɾ] or [ʔ]',
+    viseme: 'TDNL',
+    tip: 'Between vowels a “t” can stay a crisp tap of the tongue tip on the ridge. Aim for a clean, light tap — not a swallowed glottal stop, and not a heavy hammered T either.',
+    commonError: 'dropping it entirely — “wa’er”, “bu’er”, “impor’ant” — which reads as mumbling on a recording.',
+    words: ['water', 'better', 'letter', 'little', 'important', 'thirty'],
+    prompt:
+      'A little better water. Write the letter about the important meeting at thirty minutes past. Butter, matter, later, city.',
+  },
+  {
+    id: 'h-onset',
+    label: 'H — the breathy onset',
+    ipa: '/h/',
+    viseme: 'HH',
+    tip: 'Open the throat and simply breathe out into the vowel — no squeeze, no grunt. The “h” is air, not a consonant you build with the tongue.',
+    commonError: 'dropping it (“’ouse”, “’ard”) or replacing it with a hard glottal kick.',
+    words: ['house', 'hard', 'behind', 'whole', 'perhaps', 'ahead'],
+    prompt:
+      'How hard he hit the high hedge behind the house. Perhaps the whole herd is ahead of us; who knows how far.',
+  },
+  {
+    id: 'k-g',
+    label: 'K vs G — back / bag',
+    ipa: '/k/ vs /g/',
+    viseme: 'KG',
+    tip: 'The BACK of the tongue seals against the soft palate for both; “k” releases voiceless with a little air, “g” releases with the voice already running. Feel the throat buzz for “g” and nothing for “k”.',
+    commonError: 'unvoicing final “g”, so “bag” becomes “back” and “dog” becomes “dock”.',
+    pairs: ['back / bag', 'coat / goat', 'lock / log', 'pick / pig', 'dock / dog'],
+    prompt:
+      'Put the bag on his back. The goat wore a coat. A log on the lock; a pig to pick. The dog sat on the dock.',
+  },
+  {
+    id: 'y-j',
+    label: 'Y vs J — yellow / jello',
+    ipa: '/j/ vs /dʒ/',
+    viseme: 'Y',
+    tip: 'For “y” the tongue glides up and forward with no contact — the air never stops. For “j” the tongue blade touches behind the ridge and BREAKS the air before releasing.',
+    commonError: 'turning every “y” into a “j”, so “year” sounds like “jeer” and “yet” like “jet”.',
+    pairs: ['yellow / jello', 'year / jeer', 'yet / jet', 'use / juice', 'yam / jam'],
+    prompt:
+      'A yellow jar of jam and a yam. Not yet — the jet leaves next year. Use the juice; you have used it up already.',
+  },
+  {
+    id: 'er-vowel',
+    label: 'ER — bird / word',
+    ipa: '/ɜːr/',
+    viseme: 'ER',
+    tip: 'Bunch the middle of the tongue and curl it slightly back, lips barely rounded, and hold the sound — it is a vowel, not a quick “uh” with an “r” bolted on.',
+    commonError: 'flattening it to “uh” (“wuhd” for “word”) or over-curling it into a growl.',
+    words: ['bird', 'word', 'first', 'thirty', 'nurse', 'earth'],
+    prompt:
+      'The early bird heard the third word first. A nurse in a purple shirt turned thirty on the thirty-first, here on this earth.',
+  },
 ];
 
 export const TROUBLE_SOUND_MAP = Object.fromEntries(TROUBLE_SOUNDS.map((t) => [t.id, t]));
