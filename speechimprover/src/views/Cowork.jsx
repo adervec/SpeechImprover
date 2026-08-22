@@ -3,7 +3,7 @@
 // (or any agent pointed at the folder) writes replies back, which we import: coach
 // feedback shows here; a program reply becomes a runnable daily program.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../lib/store.jsx';
 import { useToast } from '../components/ui.jsx';
 import { formatDateTime } from '../lib/format.js';
@@ -15,6 +15,20 @@ import {
   FS_SUPPORTED, pickCoworkDir, getSavedDir, forgetDir, ensurePermission, readFileAt, writeFiles,
 } from '../lib/coworkFs.js';
 
+// The shared AI-cowork-sync panel (https://adervec.github.io/cowork.js) — the same chrome every app and
+// CoworkSyncHub show. It's loaded from the maker portal; if it can't load (offline first run) the plain
+// cards below stay in place.
+function usePanelReady() {
+  const [ready, setReady] = useState(() => !!(window.customElements && customElements.get('cowork-panel')));
+  useEffect(() => {
+    if (ready || !window.customElements) return undefined;
+    let on = true;
+    customElements.whenDefined('cowork-panel').then(() => { if (on) setReady(true); });
+    return () => { on = false; };
+  }, [ready]);
+  return ready;
+}
+
 export default function Cowork({ navigate }) {
   const { sessions, profile, startProgram } = useStore();
   const toast = useToast();
@@ -24,6 +38,8 @@ export default function Cowork({ navigate }) {
   const [msg, setMsg] = useState('');
   const [pasteChannel, setPasteChannel] = useState('coach');
   const [pasted, setPasted] = useState('');
+  const panelReady = usePanelReady();
+  const panelRef = useRef(null);
 
   const dataset = useMemo(() => buildCoworkDataset(sessions, profile), [sessions, profile]);
 
@@ -86,6 +102,7 @@ export default function Cowork({ navigate }) {
       setMsg('Note: the program reply answered an older request — importing anyway.');
     }
     startProgram(steps, (dataset.focusAreas || []).map((f) => f.attribute));
+    persist({ programAt: new Date().toISOString() });
     toast(`Imported a ${steps.length}-step program.`, { type: 'success' });
     return true;
   }
@@ -123,6 +140,42 @@ export default function Cowork({ navigate }) {
 
   const canRun = sessions.length > 0;
 
+  // feed the shared panel; its buttons come back as `cowork-action` events
+  useEffect(() => {
+    const p = panelRef.current;
+    if (!p || !panelReady) return;
+    p.setAttribute('mode', 'data'); // attribute, not a JSX prop: React 19 would assign a property
+    const t = (iso) => (iso ? Date.parse(iso) / 1000 : 0);
+    const req = t(st.lastPush);
+    const row = (name, replyAt) => ({
+      channel: name, request_mtime: req, reply_mtime: t(replyAt),
+      pending: !!req && t(replyAt) < req, answered: !!req && t(replyAt) >= req,
+    });
+    p.data = {
+      app: 'speechimprover', folder: dir ? dir.name : 'no folder connected',
+      channels: [row('coach', st.coach?.at), row('program', st.programAt)],
+      actions: [
+        ...(FS_SUPPORTED ? [{ id: 'connect', label: dir ? 'Change folder' : 'Connect folder', primary: !dir }] : []),
+        ...(dir ? [{ id: 'push', label: 'Send requests', primary: true }, { id: 'poll', label: 'Check for replies' }, { id: 'disconnect', label: 'Disconnect' }] : []),
+      ],
+      channelActions: [],
+      message: msg,
+    };
+  }, [panelReady, dir, st, msg]);
+  useEffect(() => {
+    const p = panelRef.current;
+    if (!p) return undefined;
+    const h = (ev) => {
+      const a = ev.detail?.action;
+      if (a === 'connect') chooseFolder();
+      else if (a === 'push') pushRequests();
+      else if (a === 'poll') importReplies();
+      else if (a === 'disconnect') disconnect();
+    };
+    p.addEventListener('cowork-action', h);
+    return () => p.removeEventListener('cowork-action', h);
+  });
+
   return (
     <div className="stack">
       <div className="card">
@@ -141,7 +194,9 @@ export default function Cowork({ navigate }) {
         </div>
       )}
 
-      {FS_SUPPORTED ? (
+      <cowork-panel ref={panelRef} style={{ display: panelReady ? 'block' : 'none' }} />
+
+      {!panelReady && (FS_SUPPORTED ? (
         <div className="card">
           <div className="card-head"><h3>1 · Folder</h3>{dir && <span className="badge good">connected</span>}</div>
           {dir ? (
@@ -163,9 +218,9 @@ export default function Cowork({ navigate }) {
         <div className="card tight" style={{ borderColor: 'var(--warn)' }}>
           <span className="small">This browser can't write folders directly. Use the manual flow below (download a request, run the agent, paste its reply). For the full folder handshake, use Chrome or Edge on desktop.</span>
         </div>
-      )}
+      ))}
 
-      {FS_SUPPORTED && dir && (
+      {!panelReady && FS_SUPPORTED && dir && (
         <div className="grid cols-2">
           <div className="card">
             <div className="card-head"><h3>2 · Push requests</h3></div>
@@ -184,7 +239,7 @@ export default function Cowork({ navigate }) {
         </div>
       )}
 
-      {msg && <div className="card tight"><span className="small">{msg}</span></div>}
+      {!panelReady && msg && <div className="card tight"><span className="small">{msg}</span></div>}
 
       {st.coach && (
         <div className="card" style={{ borderColor: 'var(--accent)' }}>
