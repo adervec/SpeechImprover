@@ -283,7 +283,7 @@ export function StoreProvider({ children }) {
     }
     await putSession(record);
     // maker-portal character sheet (same-origin localStorage; stays in this browser)
-    try { const k = 'portal-activity', a = JSON.parse(localStorage.getItem(k) || '[]'); a.push([Math.round(Date.now() / 1000), 'SpeechImprover', 'speak', 1]); localStorage.setItem(k, JSON.stringify(a.slice(-2000))); } catch (_) { /* quota — ignore */ }
+    try { const k = 'portal-activity', a = JSON.parse(localStorage.getItem(k) || '[]'); a.push([Math.round(Date.now() / 1000), 'SpeechImprover', 'speak', 1]); localStorage.setItem(k, JSON.stringify(a.slice(-2000))); } catch { /* quota — ignore */ }
     setSessions((prev) => [record, ...prev].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)));
     return record;
   }, []);
