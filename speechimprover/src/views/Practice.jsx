@@ -22,6 +22,9 @@ import {
   suggestNextExercise,
   withFreshVariant,
   freshPrompt,
+  recencyIndex,
+  partitionSeen,
+  leastRecent,
 } from '../lib/exercises.js';
 import { weakestAttributes } from '../lib/aggregate.js';
 import { getTechniqueExercise, evaluateStage } from '../lib/vocalMastery.js';
@@ -105,7 +108,21 @@ export default function Practice({ route, navigate }) {
   const [phase, setPhase] = useState('setup'); // setup | recording | analyzing | result
   const [chooserMode, setChooserMode] = useState(queryExercise ? queryExercise.mode : 'free');
   const [customText, setCustomText] = useState('');
-  const [selectedPassage, setSelectedPassage] = useState(READING_LIBRARY[0].id);
+  // Provided-text pickers: never-used first, already-used sink to a final group.
+  const recency = useMemo(() => recencyIndex(sessions), [sessions]);
+  const passagePick = useMemo(() => {
+    const all = partitionSeen(READING_LIBRARY, recency);
+    const groups = PASSAGE_GROUPS.map((g) => ({ ...g, items: partitionSeen(g.items, recency).fresh })).filter((g) => g.items.length);
+    return { ...all, groups };
+  }, [recency]);
+  const promptPick = useMemo(() => {
+    const id = (s) => s;
+    const free = partitionSeen(FREE_PROMPTS, recency, id, () => null);
+    const interview = partitionSeen(INTERVIEW_PROMPTS, recency, id, () => null);
+    return { free: free.fresh, interview: interview.fresh, seen: [...free.seen, ...interview.seen].sort((a, b) => free.seenAt(a) - free.seenAt(b)), seenAt: free.seenAt };
+  }, [recency]);
+  const seenLabel = (t) => `✓ read ${new Date(t).toLocaleDateString()}`;
+  const [selectedPassage, setSelectedPassage] = useState(() => (passagePick.fresh[0] || READING_LIBRARY[0]).id);
   const [freePrompt, setFreePrompt] = useState(() => freshPrompt(FREE_PROMPTS, sessions));
   const [freeTone, setFreeTone] = useState(TONE_TARGETS[0]);
   const [customPrompt, setCustomPrompt] = useState('');
@@ -569,20 +586,25 @@ export default function Practice({ route, navigate }) {
                   <label className="field">
                     Provided passage — {READING_LIBRARY.length} from the public-domain library
                     <select value={selectedPassage} onChange={(e) => { setSelectedPassage(e.target.value); setCustomText(''); }}>
-                      {PASSAGE_GROUPS.map((g) => (
+                      {passagePick.groups.map((g) => (
                         <optgroup key={g.key} label={`${g.label} (${g.items.length})`}>
                           {g.items.map((p) => <option key={p.id} value={p.id}>{passageLabel(p)}</option>)}
                         </optgroup>
                       ))}
+                      {passagePick.seen.length > 0 && (
+                        <optgroup label={`✓ Already read (${passagePick.seen.length}) — least recent first`}>
+                          {passagePick.seen.map((p) => <option key={p.id} value={p.id}>{seenLabel(passagePick.seenAt(p))} · {passageLabel(p)}</option>)}
+                        </optgroup>
+                      )}
                     </select>
                   </label>
                   <button className="btn ghost sm" style={{ alignSelf: 'flex-start' }}
                     onClick={() => {
-                      const r = READING_LIBRARY[Math.floor(Math.random() * READING_LIBRARY.length)];
+                      const r = leastRecent(READING_LIBRARY.filter((p) => p.id !== selectedPassage), passagePick.seenAt);
                       setSelectedPassage(r.id);
                       setCustomText('');
                     }}>
-                    🎲 Random passage
+                    🎲 Random unread passage
                   </button>
                   <label className="field">
                     …or paste your own / an unseen paper to read
@@ -605,12 +627,21 @@ export default function Practice({ route, navigate }) {
                   <label className="field">
                     Prompt — pick a topic…
                     <select value={freePrompt} onChange={(e) => setFreePrompt(e.target.value)}>
-                      <optgroup label="Free / improv">
-                        {FREE_PROMPTS.map((p) => <option key={p} value={p}>{p}</option>)}
-                      </optgroup>
-                      <optgroup label="High-pressure">
-                        {INTERVIEW_PROMPTS.map((p) => <option key={p} value={p}>{p}</option>)}
-                      </optgroup>
+                      {promptPick.free.length > 0 && (
+                        <optgroup label={`Free / improv (${promptPick.free.length})`}>
+                          {promptPick.free.map((p) => <option key={p} value={p}>{p}</option>)}
+                        </optgroup>
+                      )}
+                      {promptPick.interview.length > 0 && (
+                        <optgroup label={`High-pressure (${promptPick.interview.length})`}>
+                          {promptPick.interview.map((p) => <option key={p} value={p}>{p}</option>)}
+                        </optgroup>
+                      )}
+                      {promptPick.seen.length > 0 && (
+                        <optgroup label={`✓ Already used (${promptPick.seen.length}) — least recent first`}>
+                          {promptPick.seen.map((p) => <option key={p} value={p}>{seenLabel(promptPick.seenAt(p))} · {p}</option>)}
+                        </optgroup>
+                      )}
                     </select>
                   </label>
                   <button className="btn ghost sm" style={{ alignSelf: 'flex-start' }}

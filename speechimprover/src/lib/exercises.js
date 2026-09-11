@@ -406,6 +406,19 @@ export function recencyIndex(sessions = []) {
 }
 
 // Least-recently-used pick from a list (never-used first; ties broken randomly).
+// Split provided-text items into never-used vs already-used (matched by exercise
+// id or by exact prompt text, so featured/baseline/program uses all count).
+// `seen` is ordered oldest-first so the least-recently-read sits nearest the top
+// of the "already read" block.
+export function partitionSeen(items, idx, textOf = (p) => p.text, idOf = (p) => p.id) {
+  const seenAt = (p) => idx.byId.get(idOf(p)) || idx.byPrompt.get((textOf(p) || '').trim()) || 0;
+  const fresh = [];
+  const seen = [];
+  for (const p of items) (seenAt(p) ? seen : fresh).push(p);
+  seen.sort((a, b) => seenAt(a) - seenAt(b));
+  return { fresh, seen, seenAt };
+}
+
 export function leastRecent(items, lastSeen /* item -> ts|undefined */) {
   if (!items.length) return null;
   const scored = items.map((it) => ({ it, t: lastSeen(it) || 0, r: Math.random() }));
@@ -522,6 +535,11 @@ export function demo() {
   console.assert(prog.some((e) => e.category === 'Targeted' && e.targetAttributes[0] === 'resonantDepth'), 'program uses the targeted depth set');
   console.assert(prog.some((e) => e.category === 'Scenario'), 'program ends with a real-world scenario');
   console.assert(freshPrompt(['a', 'b'], [{ createdAt: now, prompt: 'a' }]) === 'b', 'fresh prompt skips recent');
+  const seenIdx = recencyIndex([{ createdAt: now, exerciseId: 'core-read-tide', prompt: READING_LIBRARY[0].text }, { createdAt: '2020-01-01', exerciseId: READING_LIBRARY[2].id }]);
+  const part = partitionSeen(READING_LIBRARY.slice(0, 3), seenIdx);
+  console.assert(part.fresh.length === 1 && part.fresh[0].id === READING_LIBRARY[1].id, 'unused passage stays fresh');
+  console.assert(part.seen.map((p) => p.id).join() === `${READING_LIBRARY[2].id},${READING_LIBRARY[0].id}`, 'seen by id or by text, oldest first');
+  console.assert(partitionSeen(['x', 'y'], recencyIndex([{ createdAt: now, prompt: 'y' }]), (s) => s, () => null).seen[0] === 'y', 'string prompts partition by text');
   const a = suggestNextExercise(['fillers'], 'free-0', [{ createdAt: now, exerciseId: 'free-0' }]);
   console.assert(a && a.id !== 'free-0' && a.targetAttributes.includes('fillers'), 'targets weakest, skips excluded');
   const b = suggestNextExercise(['fillers'], null, [{ createdAt: now, exerciseId: a.id }]);
