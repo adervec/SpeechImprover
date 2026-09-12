@@ -71,8 +71,13 @@ export function AttrLabel({ attrKey }) {
 
 export function Modal({ title, onClose, children, footer, wide }) {
   const dialogRef = useRef(null);
+  // Latest onClose lives in a ref so the mount effect below never re-runs — callers
+  // pass a fresh arrow every render, and re-running it stole focus from whatever
+  // field you were typing in.
+  const closeRef = useRef(onClose);
+  useEffect(() => { closeRef.current = onClose; });
   useEffect(() => {
-    const onKey = (e) => e.key === 'Escape' && onClose?.();
+    const onKey = (e) => e.key === 'Escape' && closeRef.current?.();
     window.addEventListener('keydown', onKey);
     // Move focus into the dialog and lock background scroll while open.
     // ponytail: initial focus + scroll-lock, not a full tab-trap — add one if AT users need it.
@@ -83,7 +88,7 @@ export function Modal({ title, onClose, children, footer, wide }) {
       window.removeEventListener('keydown', onKey);
       document.body.style.overflow = prevOverflow;
     };
-  }, [onClose]);
+  }, []);
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}>
       <div ref={dialogRef} tabIndex={-1} className="modal" style={wide ? { width: 'min(920px, 100%)' } : undefined} role="dialog" aria-modal="true">
