@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { useStore } from '../lib/store.jsx';
 import { ScoreBadge, EmptyState, Modal, useToast } from '../components/ui.jsx';
 import { splitIntoPassages } from '../lib/passages.js';
+import { fileToText, ACCEPT } from '../lib/docImport.js';
 import { averageOverall } from '../lib/aggregate.js';
 import { formatDuration } from '../lib/format.js';
 import { exportProjectAudiobook, reconcileTracks, orderedProjectSessions } from '../lib/audiobook.js';
@@ -38,13 +39,33 @@ function ProjectList({ projects, sessions, createProject, navigate }) {
   const [name, setName] = useState('');
   const [notes, setNotes] = useState('');
   const [text, setText] = useState('');
+  const [chunkWords, setChunkWords] = useState(90);
+  const [importing, setImporting] = useState(false);
   const [open, setOpen] = useState(false);
   const toast = useToast();
 
+  async function onFile(e) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setImporting(true);
+    try {
+      const t = await fileToText(f);
+      if (!t.trim()) throw new Error('No readable text found in that file.');
+      setText(t);
+      if (!name.trim()) setName(f.name.replace(/\.[^.]+$/, ''));
+      toast(`Imported ${f.name} — ${t.split(/\s+/).length.toLocaleString()} words.`);
+    } catch (err) {
+      toast(err.message || 'Could not read that file.');
+    } finally {
+      setImporting(false);
+      e.target.value = '';
+    }
+  }
+
   function create() {
     if (!name.trim()) { toast('Give the project a name.'); return; }
-    const p = createProject({ name, notes, text });
-    setName(''); setNotes(''); setText(''); setOpen(false);
+    const p = createProject({ name, notes, text, chunkWords });
+    setName(''); setNotes(''); setText(''); setChunkWords(90); setOpen(false);
     toast('Project created.');
     navigate('projects', { param: p.id });
   }
@@ -102,10 +123,25 @@ function ProjectList({ projects, sessions, createProject, navigate }) {
           <label className="field">Name<input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Read “The Great Gatsby”" autoFocus /></label>
           <label className="field" style={{ marginTop: 12 }}>Notes / goal (optional)<input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. One chapter a day, clear and unhurried" /></label>
           <label className="field" style={{ marginTop: 12 }}>
-            Full text to read (optional) — paste a book/essay and you'll read it passage by passage
-            <textarea value={text} onChange={(e) => setText(e.target.value)} rows={5} placeholder="Paste the whole work here. Leave empty for a free-speaking project you just file recordings under." />
+            Document to read (optional) — TXT, Markdown, HTML or PDF
+            <input type="file" accept={ACCEPT} onChange={onFile} disabled={importing} />
           </label>
-          {text.trim() && <p className="tiny muted" style={{ marginTop: 8 }}>≈ {splitIntoPassages(text).length} passages.</p>}
+          <label className="field" style={{ marginTop: 12 }}>
+            …or paste the text — you'll read it passage by passage
+            <textarea value={text} onChange={(e) => setText(e.target.value)} rows={5} placeholder={importing ? 'Reading the file…' : 'Paste the whole work here. Leave empty for a free-speaking project you just file recordings under.'} />
+          </label>
+          {text.trim() && (
+            <div className="row wrap" style={{ gap: 14, marginTop: 10, alignItems: 'flex-end' }}>
+              <label className="field" style={{ margin: 0 }}>
+                Words per passage
+                <input type="number" min={20} max={400} step={10} value={chunkWords} style={{ width: 110 }}
+                  onChange={(e) => setChunkWords(Math.max(20, Math.min(400, Number(e.target.value) || 90)))} />
+              </label>
+              <span className="tiny muted" style={{ paddingBottom: 8 }}>
+                ≈ {splitIntoPassages(text, chunkWords).length} passages · ~{Math.round(chunkWords / 130 * 60)} s each at 130 wpm
+              </span>
+            </div>
+          )}
         </Modal>
       )}
     </div>
@@ -174,7 +210,11 @@ function ProjectDetail({ project, sessions, updateProject, deleteProject, naviga
   const [openIds, setOpenIds] = useState(() => new Set());
   const [exporting, setExporting] = useState(null); // null | { i, total, title }
   const [editing, setEditing] = useState(null); // track index being trimmed/split
+  const [showAll, setShowAll] = useState(false); // full passage list
+  const [importing, setImporting] = useState(false);
   const st = useMemo(() => projectStats(project, sessions), [project, sessions]);
+  // Passages already recorded — matched by text so re-chunking doesn't lose the ticks.
+  const recordedTexts = useMemo(() => new Set(st.mine.map((s) => (s.prompt || '').trim())), [st.mine]);
   const total = st.passages.length;
   const idx = Math.min(project.passageIndex || 0, total);
   const pct = total ? Math.round(idx / total * 100) : null;
@@ -336,13 +376,70 @@ function ProjectDetail({ project, sessions, updateProject, deleteProject, naviga
               <span className="tiny mono">~{chunkWords} words · {total} passages</span>
             </div>
             <input
-              type="range" min={30} max={200} step={10} value={chunkWords} style={{ padding: 0 }}
+              type="range" min={20} max={400} step={10} value={chunkWords} style={{ padding: 0 }}
               onChange={(e) => updateProject(project.id, { chunkWords: Number(e.target.value) })}
             />
             <p className="tiny muted" style={{ marginTop: 4 }}>
               Splits on paragraph breaks first, then fills up to this many words per passage. Changing it re-chunks the text.
             </p>
           </div>
+        </div>
+      )}
+
+      {total > 0 && (
+        <div className="card">
+          <div className="card-head">
+            <div>
+              <h3>📑 All passages</h3>
+              <span className="tiny muted">jump to any passage · ✓ = already recorded</span>
+            </div>
+            <button className="btn ghost sm" onClick={() => setShowAll((v) => !v)}>{showAll ? '▴ hide' : `▾ show ${total}`}</button>
+          </div>
+          {showAll && (
+            <div className="stack" style={{ gap: 4 }}>
+              {st.passages.map((p, i) => {
+                const done = recordedTexts.has(p.trim());
+                const cur = i === idx;
+                return (
+                  <div key={i} className="row spread wrap" style={{ gap: 8, padding: '6px 8px', borderRadius: 6, background: cur ? 'color-mix(in srgb, var(--accent) 12%, transparent)' : undefined }}>
+                    <span className="small" style={{ minWidth: 0, flex: 1 }}>
+                      <span className="tag" style={{ marginRight: 6 }}>#{i + 1}</span>
+                      {done && <span style={{ color: 'var(--good)' }}>✓ </span>}
+                      <span className={done ? 'muted' : undefined}>{p.slice(0, 100)}{p.length > 100 ? '…' : ''}</span>
+                    </span>
+                    <button className="btn ghost sm" onClick={() => { setPos(i); navigate('practice', { query: { project: project.id } }); }}>
+                      {done ? '↻ Re-read' : '● Read'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {total === 0 && (
+        <div className="card">
+          <div className="card-head"><h3>📄 Add a document to read</h3><span className="tiny muted">TXT, Markdown, HTML or PDF — or paste</span></div>
+          <input type="file" accept={ACCEPT} disabled={importing}
+            onChange={async (e) => {
+              const f = e.target.files?.[0];
+              if (!f) return;
+              setImporting(true);
+              try {
+                const t = await fileToText(f);
+                if (!t.trim()) throw new Error('No readable text found in that file.');
+                updateProject(project.id, { text: t, passageIndex: 0 });
+                toast(`Imported ${f.name}.`);
+              } catch (err) {
+                toast(err.message || 'Could not read that file.');
+              } finally {
+                setImporting(false);
+                e.target.value = '';
+              }
+            }} />
+          <textarea rows={4} style={{ marginTop: 10 }} placeholder="…or paste the whole work here"
+            onBlur={(e) => e.target.value.trim() && updateProject(project.id, { text: e.target.value, passageIndex: 0 })} />
         </div>
       )}
 

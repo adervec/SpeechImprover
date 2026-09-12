@@ -104,16 +104,24 @@ export function analyzeTranscript(transcript, durationSec) {
 export function readingCoverage(promptText, transcript) {
   const p = tokenize(promptText);
   const t = tokenize(transcript);
-  if (!p.length) return { coverage: 0, matched: 0, total: 0 };
+  if (!p.length) return { coverage: 0, matched: 0, total: 0, lastMatched: -1 };
   let ti = 0;
   let matched = 0;
-  for (const w of p) {
+  // lastMatched = prompt index of the reader's current word. It freezes after a
+  // long run of misses so a stray "the" far ahead can't leap the cursor forward.
+  let lastMatched = -1;
+  let miss = 0;
+  let frozen = false;
+  for (let i = 0; i < p.length; i += 1) {
+    const w = p[i];
     const end = Math.min(t.length, ti + 6);
+    let hit = false;
     for (let j = ti; j < end; j += 1) {
-      if (t[j] === w) { matched += 1; ti = j + 1; break; }
+      if (t[j] === w) { matched += 1; ti = j + 1; hit = true; break; }
     }
+    if (hit) { if (!frozen) lastMatched = i; miss = 0; } else if (++miss > 8) frozen = true;
   }
-  return { coverage: matched / p.length, matched, total: p.length };
+  return { coverage: matched / p.length, matched, total: p.length, lastMatched };
 }
 
 // Runnable self-check for the coverage alignment.
@@ -127,6 +135,10 @@ export function demoCoverage() {
   const skipped = readingCoverage(prompt, 'the quick brown fox jumps over the dog');
   console.assert(skipped.coverage > 0.8 && skipped.coverage < 1, `one missed word, got ${skipped.coverage}`);
   console.assert(readingCoverage('', 'anything').coverage === 0, 'empty prompt = 0');
+  console.assert(readingCoverage(prompt, 'the quick brown').lastMatched === 2, 'cursor sits on the last recognised word');
+  console.assert(readingCoverage(prompt, '').lastMatched === -1, 'nothing read → no cursor');
+  const far = 'a b c d e f g h i j k l m n o p q r s t the end';
+  console.assert(readingCoverage(far, 'a b c the').lastMatched === 2, 'a stray far-ahead match cannot leap the cursor');
   return true;
 }
 

@@ -199,6 +199,7 @@ export function StoreProvider({ children }) {
       name: (data.name || 'Untitled project').trim(),
       notes: data.notes || '',
       text: data.text || '', // optional full work; when present, read in passages
+      chunkWords: Number(data.chunkWords) || 90, // target words per passage
       passageIndex: 0,
       createdAt: new Date().toISOString(),
     };

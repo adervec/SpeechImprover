@@ -633,6 +633,18 @@ table.data tr:hover td {
   font-size: 1.05rem;
   line-height: 1.6;
   white-space: pre-wrap; /* preserve verse line breaks for poetry passages */
+  max-height: min(46vh, 440px); /* long passages scroll instead of pushing the controls away */
+  overflow-y: auto;
+  scroll-padding-block: 40px;
+}
+/* live reading progress inside the prompt box */
+.read-done { opacity: 0.45; }
+.read-now {
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 4px;
+  font-weight: 600;
 }
 .highlight-filler {
   background: color-mix(in srgb, var(--bad) 30%, transparent);

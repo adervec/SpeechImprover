@@ -8,6 +8,7 @@ import RecordingAudio from '../components/RecordingAudio.jsx';
 import LiveFeedback from '../components/LiveFeedback.jsx';
 import LiveWave from '../components/LiveWave.jsx';
 import EmotiveText, { EmotiveToggle } from '../components/EmotiveText.jsx';
+import ReadingProgress from '../components/ReadingProgress.jsx';
 import { stripTags } from '../lib/emotive.js';
 import { analyzeTranscript, readingCoverage } from '../lib/analysis/speechMetrics.js';
 import { analyzeRecording, assessCompletion } from '../lib/analysis/index.js';
@@ -177,7 +178,7 @@ export default function Practice({ route, navigate }) {
   // passage at a time, tracking a position through the whole work.
   const selectedProject = projects.find((p) => p.id === selectedProjectId) || null;
   const readingProject = selectedProject && selectedProject.text?.trim() ? selectedProject : null;
-  const passages = useMemo(() => (readingProject ? splitIntoPassages(readingProject.text) : []), [readingProject]);
+  const passages = useMemo(() => (readingProject ? splitIntoPassages(readingProject.text, readingProject.chunkWords) : []), [readingProject]);
   const passageIdx = readingProject ? Math.min(readingProject.passageIndex || 0, Math.max(0, passages.length - 1)) : 0;
 
   const activeExercise = useMemo(() => {
@@ -511,6 +512,11 @@ export default function Practice({ route, navigate }) {
   // merged with transcript-derived metrics, scored by the same attribute functions.
   const liveTx = recording ? analyzeTranscript(`${recorder.finalText} ${recorder.interim}`.trim(), Math.max(1, recorder.elapsedMs / 1000)) : null;
   const liveMerged = recording ? { ...(recorder.liveMetrics || {}), ...(liveTx || {}), recognitionConfidence: 0 } : null;
+  // Where the reader is in the provided text (final + interim, for responsiveness).
+  // null = not a live read; -1 = reading, nothing recognised yet.
+  const readPos = recording && liveRecognition && activeExercise.mode === 'read' && activeExercise.prompt
+    ? readingCoverage(activeExercise.prompt, `${recorder.finalText} ${recorder.interim}`).lastMatched
+    : null;
 
   return (
     <div className="stack">
@@ -688,9 +694,12 @@ export default function Practice({ route, navigate }) {
         )}
         {activeExercise.prompt ? (
           <div className="prompt-box">
-            {settings.emotiveTags && activeExercise.mode !== 'free'
-              ? <EmotiveText text={activeExercise.prompt} tagged={activeExercise.taggedPrompt} />
-              : activeExercise.prompt}
+            {readPos != null
+              // ponytail: live progress view is plain text — study the emotive tags before you start.
+              ? <ReadingProgress text={activeExercise.prompt} upTo={readPos} />
+              : settings.emotiveTags && activeExercise.mode !== 'free'
+                ? <EmotiveText text={activeExercise.prompt} tagged={activeExercise.taggedPrompt} />
+                : activeExercise.prompt}
           </div>
         ) : (
           <div className="prompt-box muted">Speak freely — no script for this one.</div>
