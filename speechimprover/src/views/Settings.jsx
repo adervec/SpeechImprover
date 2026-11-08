@@ -41,8 +41,8 @@ export default function Settings() {
       if (!(await ensureReadPermission(dir, true))) { toast('Folder access was denied.'); return; }
       const res = await scanNarrationDir(dir, addSession);
       toast(res.imported
-        ? `Imported ${res.imported} narration session${res.imported === 1 ? '' : 's'} from Tachyread.`
-        : res.seen ? 'No new narration sessions — everything already imported.' : 'No Tachyread narration logs in that folder yet.');
+        ? `Imported ${res.imported} session${res.imported === 1 ? '' : 's'} from Tachyread.`
+        : res.seen ? 'No new Tachyread sessions — everything already imported.' : 'No Tachyread logs in that folder yet.');
     } catch (err) {
       toast(`Scan failed: ${err.message || err}`);
     } finally {
@@ -155,14 +155,18 @@ export default function Settings() {
         {!recognitionSupported && <p className="tiny" style={{ color: 'var(--warn)', marginTop: 8 }}>⚠️ Not supported in this browser — try Chrome or Edge. Pitch, energy and articulation are still analyzed.</p>}
       </div>
 
-      {/* Tachyread narration → training sessions */}
+      {/* Tachyread narration + reading aloud → sessions */}
       <div className="card">
-        <div className="card-head"><h3>Tachyread narration</h3></div>
+        <div className="card-head"><h3>Tachyread speech</h3></div>
         <p className="small muted" style={{ marginTop: 0 }}>
-          Narrating an audiobook in Tachyread is speech practice. Point Tachyread’s read-through
-          recorder and this app at the <b>same folder</b>: Tachyread drops a small quality log per
-          session (pace, level, steadiness — no audio), and each log is imported here as a completed
-          training session, counting toward your streak, activity grid and practice time.
+          Speaking in Tachyread is speech practice. Point this app at the <b>speech/</b> subfolder of
+          your Tachyread folder: Tachyread drops a small log per session there (no audio, no text).
+          Audiobook <b>narration</b> comes in as a completed training session (pace, quality,
+          steadiness); <b>reading aloud to advance the text</b> comes in <b>scored</b> — Tachyread’s
+          live voice scores on this app’s attributes, pace and filler economy rescored from the words
+          read, and its face-camera presenting scores (eye contact, head steadiness, expressiveness,
+          articulation) when that was on. All of it counts toward your streak, activity grid, trends
+          and practice time.
         </p>
         {!FS_SUPPORTED && <p className="small muted">Folder watching needs a Chromium browser (Chrome, Edge, Brave).</p>}
         {FS_SUPPORTED && (
@@ -174,7 +178,7 @@ export default function Settings() {
                 <button className="btn" onClick={async () => { await forgetNarrationDir(); setNarrationDir(null); }}>Forget folder</button>
               </>
             ) : (
-              <button className="btn" onClick={linkNarrationFolder}>📁 Watch a narration folder…</button>
+              <button className="btn" onClick={linkNarrationFolder}>📁 Watch Tachyread’s speech folder…</button>
             )}
           </div>
         )}
