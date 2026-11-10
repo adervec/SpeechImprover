@@ -21,10 +21,20 @@ export function formatDateTime(iso) {
   });
 }
 
+// House rule: a calendar day is the user's LOCAL day. Never take a day from
+// toISOString().slice(0, 10) or parse a bare 'YYYY-MM-DD' with new Date(str) — both are UTC.
+const pad2 = (n) => String(n).padStart(2, '0');
+export function localDayKey(d = new Date()) {
+  const x = new Date(d);
+  return `${x.getFullYear()}-${pad2(x.getMonth() + 1)}-${pad2(x.getDate())}`;
+}
+// A stored 'YYYY-MM-DD' back as local midnight of that day.
+export const parseDayKey = (key) => new Date(`${key}T00:00:00`);
+
 export function relativeDay(iso) {
   if (!iso) return '';
-  const then = new Date(iso).getTime();
-  const days = Math.round((Date.now() - then) / 86400000);
+  // Whole local calendar days between then and today (not 24h blocks).
+  const days = Math.round((parseDayKey(localDayKey()) - parseDayKey(localDayKey(iso))) / 86400000);
   if (days <= 0) return 'today';
   if (days === 1) return 'yesterday';
   if (days < 7) return `${days} days ago`;

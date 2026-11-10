@@ -6,7 +6,7 @@ import { useMediaDevices } from '../hooks/useMediaDevices.js';
 import { Modal, useToast } from '../components/ui.jsx';
 import { THEMES, THEME_KEYS } from '../styles/themes.js';
 import { exportData, importData, downloadJson } from '../lib/exportImport.js';
-import { formatBytes } from '../lib/format.js';
+import { formatBytes, localDayKey } from '../lib/format.js';
 import { eraseAllLocalData } from '../lib/eraseAll.js';
 import { deleteDatabase } from '../lib/db.js';
 import {
@@ -64,7 +64,7 @@ export default function Settings() {
 
   async function doExport() {
     const data = await exportData({ includeAudio, profile, settings });
-    downloadJson(data, `speechimprover-export-${new Date().toISOString().slice(0, 10)}.json`);
+    downloadJson(data, `speechimprover-export-${localDayKey()}.json`);
     toast(`Exported ${data.sessions.length} sessions${includeAudio ? ' with audio' : ''}.`);
   }
 

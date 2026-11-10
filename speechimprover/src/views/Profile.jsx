@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { useStore } from '../lib/store.jsx';
 import { useToast } from '../components/ui.jsx';
 import { ATTRIBUTES } from '../lib/analysis/attributes.js';
+import { localDayKey, parseDayKey } from '../lib/format.js';
 
 const GENDERS = ['', 'Male', 'Female', 'Non-binary', 'Prefer not to say'];
 
 function ageFromDob(dob) {
-  const d = new Date(dob);
+  const d = parseDayKey(dob || ''); // local midnight, not UTC
   if (Number.isNaN(d.getTime())) return null;
   const now = new Date();
   let a = now.getFullYear() - d.getFullYear();
@@ -52,7 +53,7 @@ export default function Profile() {
         <div className="grid cols-2">
           <label className="field">Name<input value={form.name || ''} onChange={(e) => set('name', e.target.value)} placeholder="Optional" /></label>
           <label className="field">Date of birth
-            <input type="date" max={new Date().toISOString().slice(0, 10)} value={form.dob || ''} onChange={(e) => set('dob', e.target.value)} />
+            <input type="date" max={localDayKey()} value={form.dob || ''} onChange={(e) => set('dob', e.target.value)} />
             {ageFromDob(form.dob) != null && <span className="tiny muted">Age {ageFromDob(form.dob)}</span>}
           </label>
           <label className="field">Gender (for resonance reference)

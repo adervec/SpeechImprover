@@ -1,24 +1,24 @@
 // Aggregations over sessions for the dashboard and trends views.
 
 import { ATTRIBUTES } from './analysis/attributes.js';
+import { localDayKey, parseDayKey } from './format.js';
 
-function dayKey(iso) {
-  return new Date(iso).toISOString().slice(0, 10);
-}
+// The user's LOCAL calendar day of a timestamp.
+const dayKey = (iso) => localDayKey(iso);
 
 // Consecutive-day practice streak ending today (or yesterday).
-export function computeStreak(sessions) {
+export function computeStreak(sessions, now = new Date()) {
   if (!sessions.length) return 0;
   const days = new Set(sessions.map((s) => dayKey(s.createdAt)));
   let streak = 0;
-  const cursor = new Date();
+  const cursor = new Date(now);
   // Allow the streak to count from today or yesterday.
-  if (!days.has(cursor.toISOString().slice(0, 10))) {
+  if (!days.has(localDayKey(cursor))) {
     cursor.setDate(cursor.getDate() - 1);
-    if (!days.has(cursor.toISOString().slice(0, 10))) return 0;
+    if (!days.has(localDayKey(cursor))) return 0;
   }
   for (;;) {
-    if (days.has(cursor.toISOString().slice(0, 10))) {
+    if (days.has(localDayKey(cursor))) {
       streak += 1;
       cursor.setDate(cursor.getDate() - 1);
     } else break;
@@ -78,12 +78,13 @@ export function trendDelta(series) {
 // Signed % change of this week's average overall score vs last week's.
 // null when either week has no scored session (so the UI can show "—" honestly).
 export function weekDelta(sessions, now = new Date()) {
-  const DAY = 86400000;
   const thisWeek = new Date(now);
   thisWeek.setHours(0, 0, 0, 0);
   thisWeek.setDate(thisWeek.getDate() - thisWeek.getDay()); // back to Sunday
   const thisStart = thisWeek.getTime();
-  const lastStart = thisStart - 7 * DAY;
+  const lastWeek = new Date(thisWeek);
+  lastWeek.setDate(lastWeek.getDate() - 7); // calendar step, DST-safe
+  const lastStart = lastWeek.getTime();
   const avgIn = (from, to) => {
     const vals = sessions
       .filter((s) => s.overall != null)
@@ -154,7 +155,7 @@ export function activityLevel(n) {
 }
 
 // Build `weeks` columns × 7 rows (Sun→Sat) of daily session counts, ending in the
-// current week. All bucketing is in UTC days to match dayKey()/computeStreak().
+// current week. All bucketing is in the user's LOCAL days, like dayKey()/computeStreak().
 // Cells after today are flagged `future` so the grid stays rectangular.
 export function buildActivityGrid(sessions, weeks = 53, today = new Date()) {
   const counts = {};
@@ -162,12 +163,12 @@ export function buildActivityGrid(sessions, weeks = 53, today = new Date()) {
     const k = dayKey(s.createdAt);
     counts[k] = (counts[k] || 0) + 1;
   }
-  const todayKey = new Date(today).toISOString().slice(0, 10);
-  const t = new Date(`${todayKey}T00:00:00Z`);
+  const todayKey = localDayKey(today);
+  const t = parseDayKey(todayKey);
   const end = new Date(t);
-  end.setUTCDate(end.getUTCDate() + (6 - t.getUTCDay())); // Saturday of this week
+  end.setDate(end.getDate() + (6 - t.getDay())); // Saturday of this week
   const start = new Date(end);
-  start.setUTCDate(start.getUTCDate() - (weeks * 7 - 1)); // a Sunday
+  start.setDate(start.getDate() - (weeks * 7 - 1)); // a Sunday
 
   const columns = [];
   let prevMonth = -1;
@@ -177,14 +178,14 @@ export function buildActivityGrid(sessions, weeks = 53, today = new Date()) {
     let month = null;
     for (let r = 0; r < 7; r++) {
       const d = new Date(start);
-      d.setUTCDate(start.getUTCDate() + c * 7 + r);
-      const key = d.toISOString().slice(0, 10);
+      d.setDate(start.getDate() + c * 7 + r);
+      const key = localDayKey(d);
       const future = key > todayKey;
       const count = future ? 0 : counts[key] || 0;
       if (!future) total += count;
-      if (r === 0 && d.getUTCMonth() !== prevMonth) {
-        month = MONTHS[d.getUTCMonth()];
-        prevMonth = d.getUTCMonth();
+      if (r === 0 && d.getMonth() !== prevMonth) {
+        month = MONTHS[d.getMonth()];
+        prevMonth = d.getMonth();
       }
       days.push({ key, count, level: activityLevel(count), future, isToday: key === todayKey });
     }
@@ -223,4 +224,26 @@ export function subsetOptions(sessions) {
     ).entries(),
   ].map(([id, title]) => ({ id, title }));
   return { modes, types, exercises };
+}
+
+// Local-day rule check (npm test runs this in the machine's zone AND under
+// America/Sao_Paulo via scripts/check-tz.mjs). Throws on failure.
+export function demo() {
+  const ok = (c, m) => { if (!c) throw new Error(`aggregate: ${m}`); };
+  // 22:30 LOCAL tonight — at UTC-3 that's already tomorrow in UTC.
+  const now = new Date(2026, 10, 10, 23, 0);
+  const late = new Date(2026, 10, 10, 22, 30).toISOString();
+  const yesterday = new Date(2026, 10, 9, 8, 0).toISOString();
+  ok(localDayKey(late) === '2026-11-10', `22:30 local is today (${localDayKey(late)})`);
+  ok(computeStreak([{ createdAt: late }], now) === 1, 'late-evening take counts as today');
+  ok(computeStreak([{ createdAt: late }, { createdAt: yesterday }], now) === 2, 'yesterday + tonight = 2-day streak');
+  ok(computeStreak([{ createdAt: late }], new Date(2026, 10, 11, 9, 0)) === 1, 'next morning: tonight still counts (as yesterday)');
+  const cells = buildActivityGrid([{ createdAt: late }], 2, now).columns.flatMap((c) => c.days);
+  ok(cells.find((d) => d.isToday)?.count === 1 && cells.find((d) => d.isToday).key === '2026-11-10', 'grid puts it on today');
+  ok(parseDayKey('2026-03-01').getDate() === 1, 'stored day reads back as local midnight');
+  // Existing self-checks use console.assert — make them throw here.
+  const orig = console.assert;
+  console.assert = (c, m) => { if (!c) throw new Error(`aggregate: ${m}`); };
+  try { demoWeekDelta(); demoGroupSessions(); demoActivityGrid(); } finally { console.assert = orig; }
+  return 'aggregate.demo: ok';
 }
