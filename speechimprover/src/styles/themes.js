@@ -350,3 +350,24 @@ export function applyTheme(key) {
   }
   root.setAttribute('data-theme', key);
 }
+
+// House rule: with no saved theme, start from the device's light/dark setting
+// (font.js's appFont.systemTheme() when loaded, else prefers-color-scheme).
+// A saved choice always wins — this only feeds the default.
+export const DEVICE_THEMES = { dark: 'aurora', light: 'paper' };
+export function defaultTheme(win = globalThis.window) {
+  const sys = win?.appFont?.systemTheme?.()
+    ?? (win?.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  return DEVICE_THEMES[sys] || DEVICE_THEMES.dark;
+}
+
+export function demo() {
+  const ok = (c, m) => { if (!c) throw new Error(`themes: ${m}`); };
+  const mm = (light) => ({ matchMedia: (q) => ({ matches: q.includes('light') && light }) });
+  ok(defaultTheme(mm(true)) === 'paper', 'light device → Paper');
+  ok(defaultTheme(mm(false)) === 'aurora', 'dark device → Aurora');
+  ok(defaultTheme({ appFont: { systemTheme: () => 'light' }, ...mm(false) }) === 'paper', 'appFont.systemTheme() preferred');
+  ok(defaultTheme(undefined) === 'aurora', 'no window (node) → dark default');
+  ok(Object.values(DEVICE_THEMES).every((k) => THEMES[k]), 'device themes exist');
+  return 'themes.demo: ok';
+}

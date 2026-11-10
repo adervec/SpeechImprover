@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "audit:content": "node scripts/scrape-passages.mjs --audit",
-    "test": "node scripts/selftest.mjs && node scripts/check-transcript.mjs && node scripts/check-font.mjs && node scripts/check-no-third-party.mjs && node scripts/check-tz.mjs"
+    "test": "node scripts/selftest.mjs && node scripts/check-transcript.mjs && node scripts/check-font.mjs && node scripts/check-no-third-party.mjs && node scripts/check-tz.mjs && node scripts/check-whatsnew.mjs"
   },
   "dependencies": {
     "pdfjs-dist": "^4.10.38",

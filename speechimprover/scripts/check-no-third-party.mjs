@@ -9,6 +9,8 @@ import { fileURLToPath } from 'node:url';
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const files = [
   path.join(root, 'index.html'),
+  // the repo-root copy of the speaking guide too
+  ...readdirSync(path.join(root, '..', 'Baseline Ref')).filter((f) => f.endsWith('.html')).map((f) => path.join(root, '..', 'Baseline Ref', f)),
   ...readdirSync(path.join(root, 'public')).filter((f) => f.endsWith('.html')).map((f) => path.join(root, 'public', f)),
   ...readdirSync(path.join(root, 'src'), { recursive: true }).filter((f) => /\.(jsx?|css|html)$/.test(f)).map((f) => path.join(root, 'src', f)),
 ];

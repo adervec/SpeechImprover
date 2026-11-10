@@ -3,6 +3,7 @@
 // or seed data, and any left over from older versions is purged on load.
 /* eslint-disable react-refresh/only-export-components -- context provider + its hook. */
 
+import { defaultTheme } from '../styles/themes.js';
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import {
   getAllSessions,
@@ -33,8 +34,9 @@ const DEFAULT_PROFILE = {
   notes: '',
 };
 
+// theme: the device's light/dark setting until the reader picks one (saved settings win).
 const DEFAULT_SETTINGS = {
-  theme: 'aurora',
+  theme: defaultTheme(),
   inputDeviceId: '',
   outputDeviceId: '',
   recognitionEnabled: true,

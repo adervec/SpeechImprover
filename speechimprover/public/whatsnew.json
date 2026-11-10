@@ -1,0 +1,39 @@
+[
+  {
+    "date": "2026-11-10",
+    "items": [
+      "The app now starts in light or dark to match your device, until you pick a theme yourself.",
+      "Streaks and the activity calendar now go by your own local day, so late-evening practice counts for today.",
+      "Settings → Erase everything on this device removes all of SpeechImprover's data here, and leaves your Google Drive copy alone.",
+      "When Google Drive sync is on, Settings shows your Google picture and name.",
+      "Everything now loads from the app's own site: no outside font or code services."
+    ]
+  },
+  {
+    "date": "2026-11-09",
+    "items": [
+      "New default font (Atkinson Hyperlegible), with a font choice under Settings → Theme.",
+      "Longer takes are split into halves, thirds or quarters, with a grade for how well you held your pace.",
+      "After each take: how it compares with your last try at the same exercise, your best on it, and today's streak.",
+      "After reading a passage, Drill the misses gives you a quick drill of the words you misread or skipped.",
+      "Press Space on the results screen to go again."
+    ]
+  },
+  {
+    "date": "2026-11-08",
+    "items": [
+      "Just speak: one click (sidebar, dashboard or Ctrl-K) and you're recording free speech after a 3-2-1.",
+      "Voice Lab → Echo practice plays your voice back a moment late through headphones, to help you slow down and articulate.",
+      "Reading passages have a Listen first button that reads the text aloud with the current word underlined.",
+      "Free speaking has a talk-length picker, and the timer turns green, yellow and red like a speaking club's timing lights."
+    ]
+  },
+  {
+    "date": "2026-11-07",
+    "items": [
+      "Results show how your pace changed over the take.",
+      "Hedging words like “I think”, “maybe” and “just” are marked in free-speech transcripts.",
+      "Reading passages show words correct per minute."
+    ]
+  }
+]
