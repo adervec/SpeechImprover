@@ -41,6 +41,30 @@ function tokenize(text) {
     .filter(Boolean);
 }
 
+// Pace over time from recognizer segment marks ([{ t: end sec, words }]).
+// Segments shorter than minSec are merged forward so one quick burst doesn't
+// read as 400 wpm. Returns { points: [{ t, wpm }], variation: CV % } or null.
+// ponytail: segment end times only (Web Speech has no word timings); the first
+// window includes any lead-in silence.
+export function paceTimeline(marks = [], minSec = 3) {
+  const points = [];
+  let prevT = 0;
+  let words = 0;
+  for (const m of marks) {
+    words += m.words;
+    if (m.t - prevT >= minSec) {
+      points.push({ t: m.t, wpm: Math.round((words / (m.t - prevT)) * 60) });
+      prevT = m.t;
+      words = 0;
+    }
+  }
+  if (points.length < 2) return null;
+  const vals = points.map((p) => p.wpm);
+  const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+  const sd = Math.sqrt(vals.reduce((a, v) => a + (v - avg) ** 2, 0) / vals.length);
+  return { points, variation: Math.round((sd / avg) * 100) };
+}
+
 export function analyzeTranscript(transcript, durationSec) {
   const words = tokenize(transcript);
   const wordCount = words.length;

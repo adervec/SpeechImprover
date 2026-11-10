@@ -213,3 +213,38 @@ export function RadarChart({ axes = [], datasets = [], size = 320, max = 100 }) 
     </svg>
   );
 }
+
+// Words-per-minute per recognizer segment, with the 110–150 wpm target band (matches the pace attribute)
+// shaded and the take's average dashed.
+export function PaceChart({ points = [], height = 120 }) {
+  if (points.length < 2) return null;
+  const W = 600;
+  const padL = 34;
+  const padR = 8;
+  const padT = 8;
+  const padB = 20;
+  const plotW = W - padL - padR;
+  const plotH = height - padT - padB;
+  const tMax = points[points.length - 1].t;
+  const yMax = Math.max(220, ...points.map((p) => p.wpm));
+  const xAt = (t) => padL + (t / tMax) * plotW;
+  const yAt = (v) => padT + plotH - (v / yMax) * plotH;
+  const avg = points.reduce((a, p) => a + p.wpm, 0) / points.length;
+  const d = points.map((p, i) => `${i ? 'L' : 'M'}${xAt(p.t).toFixed(1)},${yAt(p.wpm).toFixed(1)}`).join(' ');
+  return (
+    <svg viewBox={`0 0 ${W} ${height}`} width="100%" height={height} style={{ display: 'block' }} role="img"
+      aria-label={`Pace over time, average ${Math.round(avg)} words per minute`}>
+      <rect x={padL} width={plotW} y={yAt(150)} height={yAt(110) - yAt(150)} fill="color-mix(in srgb, var(--good) 14%, transparent)" />
+      {[0, 100, 200].filter((g) => g <= yMax).map((g) => (
+        <text key={g} x={padL - 6} y={yAt(g) + 4} textAnchor="end" fontSize="10" fill="var(--text-dim)">{g}</text>
+      ))}
+      <line x1={padL} x2={W - padR} y1={yAt(avg)} y2={yAt(avg)} stroke="var(--text-dim)" strokeDasharray="4 4" />
+      <path d={d} fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+      {points.map((p) => (
+        <circle key={p.t} cx={xAt(p.t)} cy={yAt(p.wpm)} r="3" fill="var(--accent)"><title>{`${Math.round(p.t)}s: ${p.wpm} wpm`}</title></circle>
+      ))}
+      <text x={padL} y={height - 4} fontSize="10" fill="var(--text-dim)">0s</text>
+      <text x={W - padR} y={height - 4} textAnchor="end" fontSize="10" fill="var(--text-dim)">{Math.round(tMax)}s</text>
+    </svg>
+  );
+}

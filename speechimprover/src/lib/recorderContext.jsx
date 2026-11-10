@@ -7,6 +7,7 @@
 import { createContext, useContext, useRef, useState, useCallback } from 'react';
 import { createRecognizer, isRecognitionSupported } from './analysis/speechRecognition.js';
 import { createLiveAnalyzer } from './analysis/liveMetrics.js';
+import { analyzeTranscript } from './analysis/speechMetrics.js';
 
 const RecorderContext = createContext(null);
 
@@ -40,6 +41,8 @@ export function RecorderProvider({ children }) {
   const chunksRef = useRef([]);
   const recognizerRef = useRef(null);
   const confidenceRef = useRef(0);
+  // [{ t: seconds since start, words }] per final recognition segment → pace timeline.
+  const paceMarksRef = useRef([]);
   const confSumRef = useRef(0);
   const confCountRef = useRef(0);
   const manualStopRef = useRef(false);
@@ -173,6 +176,11 @@ export function RecorderProvider({ children }) {
         const seg = segment.trim();
         if (seg) {
           finalTextRef.current = (finalTextRef.current ? `${finalTextRef.current} ${seg}` : seg).trim();
+          paceMarksRef.current.push({
+            t: Math.round((performance.now() - startTimeRef.current) / 100) / 10,
+            words: seg.split(/\s+/).length,
+            fillers: analyzeTranscript(seg, 1).fillerTotal,
+          });
           setFinalText(finalTextRef.current);
           interimRef.current = '';
           setInterim('');
@@ -226,6 +234,7 @@ export function RecorderProvider({ children }) {
       finalTextRef.current = '';
       interimRef.current = '';
       confidenceRef.current = 0;
+      paceMarksRef.current = [];
       confSumRef.current = 0;
       confCountRef.current = 0;
       setFinalText('');
@@ -298,15 +307,17 @@ export function RecorderProvider({ children }) {
         const leftover = interimRef.current.trim();
         if (leftover && !transcript.toLowerCase().endsWith(leftover.toLowerCase())) {
           transcript = (transcript ? `${transcript} ${leftover}` : leftover).trim();
+          paceMarksRef.current.push({ t: Math.round(durationSec * 10) / 10, words: leftover.split(/\s+/).length, fillers: analyzeTranscript(leftover, 1).fillerTotal });
         }
         const confidence = confidenceRef.current;
+        const paceMarks = paceMarksRef.current;
         recorderRef.current = null;
         chunksRef.current = [];
         teardownStream();
         setMode('idle');
         setInterim('');
         interimRef.current = '';
-        resolve({ blob, mime, durationSec, transcript, confidence });
+        resolve({ blob, mime, durationSec, transcript, confidence, paceMarks });
       };
 
       if (recorder && recorder.state !== 'inactive') {

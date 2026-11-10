@@ -27,10 +27,27 @@ import {
   partitionSeen,
   leastRecent,
 } from '../lib/exercises.js';
-import { weakestAttributes } from '../lib/aggregate.js';
+import { weakestAttributes, computeStreak, groupIntoSessions } from '../lib/aggregate.js';
+import { annotateTranscript } from '../lib/analysis/transcriptAnnotate.js';
 import { getTechniqueExercise, evaluateStage } from '../lib/vocalMastery.js';
 import { splitIntoPassages } from '../lib/passages.js';
 import { formatDuration } from '../lib/format.js';
+import { isTTSSupported, speak, cancelTTS, prepareText } from '../lib/tts.js';
+
+const TALK_LENGTHS = [30, 60, 90, 120, 180];
+
+// Toastmasters-style light: neutral until 75% of the target, then green,
+// yellow once you hit it, red 15% over.
+function timerZone(elapsedSec, targetSec) {
+  const r = elapsedSec / targetSec;
+  if (r >= 1.15) return { tone: 'bad', label: 'over time — finish now' };
+  if (r >= 1) return { tone: 'warn', label: 'wrap up' };
+  if (r >= 0.75) return { tone: 'good', label: 'in the zone' };
+  return { tone: null, label: 'keep going' };
+}
+
+// Same word count ReadingProgress uses, so a TTS char offset maps to its word index.
+const wordsBefore = (text) => text.toLowerCase().replace(/[^a-z'\s]/g, ' ').split(/\s+/).filter(Boolean).length;
 
 const MODE_LABELS = {
   read: 'Read provided text',
@@ -53,7 +70,7 @@ const TONE_TARGETS = [
   { id: 'persuasive', emoji: '🎯', label: 'Persuasive / confident', attrs: ['projection', 'noUptalk', 'clarity', 'pace'], hint: 'Firm, clear, no uptalk — carry the room.' },
 ];
 
-function buildCustomExercise(mode, prompt, passageId, tone) {
+function buildCustomExercise(mode, prompt, passageId, tone, targetSec = 90) {
   if (mode === 'free') {
     const t = tone || TONE_TARGETS[0];
     return {
@@ -61,7 +78,7 @@ function buildCustomExercise(mode, prompt, passageId, tone) {
       title: `Free speaking · ${t.label}`,
       category: 'Custom',
       mode: 'free',
-      durationSec: 90,
+      durationSec: targetSec,
       targetAttributes: t.attrs,
       instructions: `Speak unscripted in a ${t.label.toLowerCase()} style — ${t.hint} Replace fillers with brief pauses.`,
       prompt,
@@ -129,12 +146,19 @@ export default function Practice({ route, navigate }) {
   const [customPrompt, setCustomPrompt] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState(route.query.project || '');
   const [exercise, setExercise] = useState(queryExercise);
+  // "Just speak" (?quick=1): free speaking with the setup folded away, counting in straight away.
+  const quick = route.query.quick === '1' && !queryExercise;
+  const [showSetup, setShowSetup] = useState(!quick);
   const [result, setResult] = useState(null); // { session, audioUrl }
   const [pendingRec, setPendingRec] = useState(null); // finished take awaiting submit/restart/abandon
   const [showModel, setShowModel] = useState(true);
   const [notes, setNotes] = useState('');
   const [starting, setStarting] = useState(false);
   const [countdown, setCountdown] = useState(0); // 3..1 pre-roll, 0 = not counting
+  const [talkTarget, setTalkTarget] = useState(90); // free-speech target length (s)
+  const [listen, setListen] = useState(null); // { text, pos } while "Listen first" plays
+
+  useEffect(() => () => cancelTTS(), []);
   const audioUrlRef = useRef(null);
   const pendingUrlRef = useRef(null);
 
@@ -168,6 +192,7 @@ export default function Practice({ route, navigate }) {
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON' || tag === 'A' || e.target?.isContentEditable) return;
       if (phase === 'setup' && !countdown && !starting) { e.preventDefault(); handleStart(); }
       else if (phase === 'recording') { e.preventDefault(); handleStop(); }
+      else if (phase === 'result' && !inProgramMode) { e.preventDefault(); saveNotes(); reset(); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -191,8 +216,8 @@ export default function Practice({ route, navigate }) {
       const text = customText.trim() || passage?.text || '';
       return buildCustomExercise('read', text, customText.trim() ? null : passage?.id);
     }
-    return buildCustomExercise('free', customPrompt.trim() || freePrompt, null, freeTone);
-  }, [exercise, readingProject, passages, passageIdx, chooserMode, selectedPassage, customText, freePrompt, customPrompt, freeTone]);
+    return buildCustomExercise('free', customPrompt.trim() || freePrompt, null, freeTone, talkTarget);
+  }, [exercise, readingProject, passages, passageIdx, chooserMode, selectedPassage, customText, freePrompt, customPrompt, freeTone, talkTarget]);
 
   const recognitionOn = settings.recognitionEnabled && recorder.recognitionSupported;
   // Humming / breath / sustained-tone drills are non-verbal: transcribing them is
@@ -234,8 +259,32 @@ export default function Practice({ route, navigate }) {
   const progDone = progSteps.filter((s) => s.status === 'done').length;
   const nextPendingIdx = progSteps.findIndex((s) => s.status === 'pending');
 
+  function startListen(text) {
+    // id guards against a cancelled earlier utterance's late onend clearing this one.
+    const id = Date.now();
+    const mine = (fn) => setListen((l) => (l?.id === id ? fn(l) : l));
+    setListen({ id, text, pos: -1 });
+    speak(text, {
+      rate: 0.95,
+      onBoundary: ({ charIndex }) => mine((l) => ({ ...l, pos: wordsBefore(prepareText(text).slice(0, charIndex)) })),
+      onEnd: () => mine(() => null),
+    });
+  }
+  function stopListen() {
+    cancelTTS();
+    setListen(null);
+  }
+
+  useEffect(() => {
+    if (!quick) return undefined;
+    const t = setTimeout(handleStart, 0); // deferred: no synchronous setState in an effect
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function handleStart() {
     if (starting || countdown) return;
+    stopListen();
     // Warm the mic while the pre-roll counts down (see countdown effect).
     recorder.startMonitor(settings.inputDeviceId);
     setCountdown(3);
@@ -282,6 +331,7 @@ export default function Practice({ route, navigate }) {
         transcript: rec.transcript,
         recognitionConfidence: rec.confidence,
         recognitionSupported: recorder.recognitionSupported,
+        paceMarks: rec.paceMarks || [],
         metrics: analysis.metrics,
         projectId: selectedProjectId || null,
         notes: '',
@@ -375,6 +425,21 @@ export default function Practice({ route, navigate }) {
     setPhase('setup');
   }
 
+  // Misread / skipped passage words from this take → a short read-aloud drill of just those.
+  function drillMisses(words) {
+    saveNotes();
+    discardPending();
+    setResult(null);
+    setExercise({
+      ...buildCustomExercise('read', `${words.join(', ')}.
+${words.join(', ')}.`, `miss-drill-${Date.now()}`),
+      title: 'Drill the misses',
+      instructions: 'The words you misread or skipped last take, twice each. Say every one fully and clearly.',
+      durationSec: 20,
+    });
+    setPhase('setup');
+  }
+
   function saveNotes() {
     if (!result) return;
     updateSession(result.session.id, { notes });
@@ -441,6 +506,7 @@ export default function Practice({ route, navigate }) {
             setNotes={setNotes}
             onSaveNotes={saveNotes}
             program={programInfo}
+            sessions={sessions}
           />
         )}
 
@@ -451,6 +517,8 @@ export default function Practice({ route, navigate }) {
           isTechnique={isTechnique}
           suggestion={suggestion}
           onAgain={reset}
+          misses={result.session.mode === 'read' ? missedWords(result.session) : []}
+          onDrillMisses={drillMisses}
           onNext={() => goToStep(nextPendingIdx)}
           onSuggested={() => {
             saveNotes();
@@ -508,6 +576,7 @@ export default function Practice({ route, navigate }) {
   }
 
   const recording = phase === 'recording';
+  const listenPos = listen && listen.text === activeExercise.prompt ? listen.pos : null;
   // Live per-attribute feedback while speaking: acoustic snapshot from the recorder
   // merged with transcript-derived metrics, scored by the same attribute functions.
   const liveTx = recording ? analyzeTranscript(`${recorder.finalText} ${recorder.interim}`.trim(), Math.max(1, recorder.elapsedMs / 1000)) : null;
@@ -544,7 +613,18 @@ export default function Practice({ route, navigate }) {
         </div>
       )}
 
-      {!recording && (
+      {!recording && !showSetup && !exercise && (
+        <div className="card tight">
+          <div className="row spread wrap" style={{ gap: 8 }}>
+            <span className="small">
+              <b>🎙️ Just speaking</b> · {freeTone.emoji} {freeTone.label} · {formatDuration(talkTarget)} target
+            </span>
+            <button className="btn ghost sm" onClick={() => setShowSetup(true)}>Change setup</button>
+          </div>
+        </div>
+      )}
+
+      {!recording && (showSetup || exercise) && (
         <div className="card">
           <div className="card-head"><h3>What do you want to practice?</h3></div>
           {exercise ? (
@@ -630,6 +710,16 @@ export default function Practice({ route, navigate }) {
                     </div>
                     <span className="tiny muted">{freeTone.hint} — you're scored on: {freeTone.attrs.join(', ')}.</span>
                   </div>
+                  <div className="field">
+                    Talk length — the timer turns green near the target, yellow at it, red when over
+                    <div className="pill-group">
+                      {TALK_LENGTHS.map((t) => (
+                        <button key={t} className={`pill ${talkTarget === t ? 'active' : ''}`} onClick={() => setTalkTarget(t)}>
+                          {formatDuration(t)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <label className="field">
                     Prompt — pick a topic…
                     <select value={freePrompt} onChange={(e) => setFreePrompt(e.target.value)}>
@@ -673,6 +763,14 @@ export default function Practice({ route, navigate }) {
           {activeExercise.prompt && activeExercise.mode !== 'free' && (
             <EmotiveToggle on={!!settings.emotiveTags} onChange={(v) => updateSettings({ emotiveTags: v })} />
           )}
+          {!recording && activeExercise.mode === 'read' && activeExercise.prompt && isTTSSupported() && (
+            listenPos != null ? (
+              <button type="button" className="btn ghost sm" onClick={stopListen}>■ Stop listening</button>
+            ) : (
+              <button type="button" className="btn ghost sm" title="Hear the passage read aloud first, then record your own read"
+                onClick={() => startListen(activeExercise.prompt)}>🔊 Listen first</button>
+            )
+          )}
           {!recording && activeExercise.variants?.length > 1 && (
             <button type="button" className="btn ghost sm" title="Show a different version of this drill's text"
               onClick={() => setExercise((ex) => {
@@ -682,21 +780,27 @@ export default function Practice({ route, navigate }) {
               🎲 Another version ({(activeExercise.variantIndex ?? 0) + 1}/{activeExercise.variants.length})
             </button>
           )}
-          {recording && (
-            <span className="badge needs-work" role="status" aria-live="polite">
-              ● LIVE · {formatDuration(recorder.elapsedMs / 1000)}
-              {activeExercise.durationSec ? ` / ${formatDuration(activeExercise.durationSec)} target` : ''}
-            </span>
-          )}
+          {recording && (() => {
+            const zone = activeExercise.mode === 'free' && activeExercise.durationSec
+              ? timerZone(recorder.elapsedMs / 1000, activeExercise.durationSec) : null;
+            return (
+              <span className="badge needs-work" role="status"
+                style={zone?.tone ? { color: `var(--${zone.tone})`, borderColor: `var(--${zone.tone})` } : undefined}>
+                ● LIVE · {formatDuration(recorder.elapsedMs / 1000)}
+                {activeExercise.durationSec ? ` / ${formatDuration(activeExercise.durationSec)} target` : ''}
+                {zone ? ` · ${zone.label}` : ''}
+              </span>
+            );
+          })()}
         </div>
         {activeExercise.instructions && !recording && (
           <p className="muted small" style={{ marginBottom: 12 }}>{activeExercise.instructions}</p>
         )}
         {activeExercise.prompt ? (
           <div className="prompt-box">
-            {readPos != null
+            {readPos != null || listenPos != null
               // ponytail: live progress view is plain text — study the emotive tags before you start.
-              ? <ReadingProgress text={activeExercise.prompt} upTo={readPos} />
+              ? <ReadingProgress text={activeExercise.prompt} upTo={readPos ?? listenPos} />
               : settings.emotiveTags && activeExercise.mode !== 'free'
                 ? <EmotiveText text={activeExercise.prompt} tagged={activeExercise.taggedPrompt} />
                 : activeExercise.prompt}
@@ -812,7 +916,7 @@ export default function Practice({ route, navigate }) {
 
 // Inline summary + per-session note. Rendered in the page flow (no modal) so the
 // user can read it alongside the full transcript and articulation review.
-function DebriefPanel({ session, notes, setNotes, onSaveNotes, program }) {
+function DebriefPanel({ session, notes, setNotes, onSaveNotes, program, sessions = [] }) {
   const isCompletion = session.assessment === 'completion';
   const scored = Object.entries(session.scores || {}).filter(([, v]) => v != null);
   const best = scored.slice().sort((a, b) => b[1] - a[1])[0];
@@ -866,6 +970,7 @@ function DebriefPanel({ session, notes, setNotes, onSaveNotes, program }) {
           )}
         </>
       )}
+      <RunContext session={session} sessions={sessions} />
       <label className="field">
         One note for next time (saved with this session)
         <textarea
@@ -881,7 +986,7 @@ function DebriefPanel({ session, notes, setNotes, onSaveNotes, program }) {
 
 // Bottom-of-page "what next?" bar so the retry/continue decision comes after the
 // user has scrolled through the transcript and articulation review.
-function DecisionBar({ program, isTechnique, suggestion, onAgain, onNext, onSuggested, onToProgram, onDone }) {
+function DecisionBar({ program, isTechnique, suggestion, onAgain, misses = [], onDrillMisses, onNext, onSuggested, onToProgram, onDone }) {
   const hasNext = program && program.nextPendingIdx >= 0;
   return (
     <div className="card" style={{ borderColor: 'var(--accent)' }}>
@@ -902,13 +1007,86 @@ function DecisionBar({ program, isTechnique, suggestion, onAgain, onNext, onSugg
             </>
           ) : (
             <>
-              <button className="btn ghost" onClick={onAgain}>↻ Again</button>
+              <button className="btn ghost" onClick={onAgain} title="Space">↻ Again</button>
+              {misses.length > 0 && (
+                <button className="btn" onClick={() => onDrillMisses(misses)} title={misses.join(', ')}>🎯 Drill the misses ({misses.length})</button>
+              )}
               <button className="btn" onClick={onDone}>{isTechnique ? 'Back to mastery' : 'Done'}</button>
               {suggestion && <button className="btn primary" onClick={onSuggested}>{suggestion.label}</button>}
             </>
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// Unique misread / skipped passage words in a read take (what the passage said).
+function missedWords(session) {
+  const { tokens } = annotateTranscript({ transcript: session.transcript || '', prompt: session.prompt || '', mode: 'read' });
+  const out = new Set();
+  for (const t of tokens) {
+    const w = t.kind === 'misread' ? t.expected : t.kind === 'omission' ? t.text : null;
+    if (w) out.add(w.toLowerCase().replace(/[^a-z'-]/g, ''));
+  }
+  return [...out].filter(Boolean).slice(0, 20);
+}
+
+// Ported from TachyRead's run results: how this take compares to your last one on
+// the same exercise, a per-exercise best, today's streak, and the takes this sitting.
+function RunContext({ session, sessions }) {
+  const others = sessions.filter((s) => s.id !== session.id);
+  const same = others.filter((s) => s.exerciseId === session.exerciseId && s.overall != null);
+  const prev = same[0]; // sessions are newest-first
+  const isBestHere = session.overall != null && same.length > 0 && session.overall > Math.max(...same.map((s) => s.overall));
+  const all = others.concat(session);
+  const streak = computeStreak(all);
+  const today = new Date().toDateString();
+  const todays = all.filter((s) => new Date(s.createdAt).toDateString() === today);
+  const todaySec = todays.reduce((a, s) => a + (s.durationSec || 0), 0);
+  const sitting = groupIntoSessions(all)[0];
+  const sittingTakes = sitting && sitting.count > 1 ? all.filter((s) => sitting.ids.includes(s.id)).sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1)) : [];
+  const delta = (a, b, unit = '', lowerIsBetter = false) => {
+    if (a == null || b == null) return null;
+    const d = Math.round(a - b);
+    const good = lowerIsBetter ? d < 0 : d > 0;
+    return <b style={{ color: d === 0 ? 'var(--text-dim)' : good ? 'var(--good)' : 'var(--bad)' }}>{d > 0 ? '+' : ''}{d}{unit}</b>;
+  };
+  const m = session.metrics || {};
+  const pm = prev?.metrics || {};
+  return (
+    <div className="stack" style={{ gap: 8, marginBottom: 16 }}>
+      {isBestHere && <p style={{ margin: 0 }}>🥇 <b>Your best on this exercise</b> (previous best {Math.max(...same.map((s) => s.overall))}).</p>}
+      {prev && session.overall != null && (
+        <p className="small" style={{ margin: 0 }}>
+          ↔ <b>vs last time on this exercise</b> ({new Date(prev.createdAt).toLocaleDateString()}): overall {delta(session.overall, prev.overall)}
+          {m.wpm && pm.wpm ? <> · pace {delta(m.wpm, pm.wpm, ' wpm')}</> : null}
+          {m.fillerTotal != null && pm.fillerTotal != null ? <> · fillers {delta(m.fillerTotal, pm.fillerTotal, '', true)}</> : null}
+        </p>
+      )}
+      <p className="small muted" style={{ margin: 0 }}>
+        🔥 {streak}-day streak · today: {todays.length} take{todays.length === 1 ? '' : 's'}, {formatDuration(todaySec)} spoken
+      </p>
+      {sittingTakes.length > 1 && (
+        <details>
+          <summary className="small" style={{ cursor: 'pointer' }}>Takes this sitting ({sittingTakes.length})</summary>
+          <table className="take-splits-table" style={{ marginTop: 6 }}>
+            <thead><tr><th>#</th><th>Time</th><th>Exercise</th><th>Overall</th><th>Pace</th><th>Fillers</th></tr></thead>
+            <tbody>
+              {sittingTakes.map((s, i) => (
+                <tr key={s.id} style={s.id === session.id ? { fontWeight: 700 } : undefined}>
+                  <td>{i + 1}</td>
+                  <td>{new Date(s.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                  <td style={{ textAlign: 'left' }}>{s.exerciseTitle}</td>
+                  <td>{s.overall ?? '–'}</td>
+                  <td>{s.metrics?.wpm ? Math.round(s.metrics.wpm) : '–'}</td>
+                  <td>{s.metrics?.fillerTotal ?? '–'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </details>
+      )}
     </div>
   );
 }

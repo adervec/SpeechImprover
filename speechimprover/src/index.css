@@ -851,6 +851,10 @@ table.data tr:hover td {
 .tok-filler-soft {
   border-bottom: 2px dashed color-mix(in srgb, var(--warn) 85%, transparent);
 }
+.tok-hedge {
+  border-bottom: 2px solid color-mix(in srgb, var(--warn) 70%, transparent);
+  font-style: italic;
+}
 .tok-repeat {
   background: color-mix(in srgb, var(--warn) 28%, transparent);
 }
@@ -979,3 +983,11 @@ table.data tr:hover td {
 .etag-angry { background: color-mix(in srgb, var(--bad) 16%, var(--surface-2)); color: var(--bad); border-color: color-mix(in srgb, var(--bad) 45%, transparent); }
 .etag-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; }
 .btn.ghost.active { border-color: var(--accent); color: var(--accent); }
+
+/* Take splits (halves / thirds / quarters) */
+.take-splits-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 13px; font-variant-numeric: tabular-nums; }
+.take-splits-table th { font-weight: 600; color: var(--text-dim); font-size: 11px; }
+.take-splits-table td, .take-splits-table th { padding: 3px 6px; border-bottom: 1px solid var(--border); }
+.take-splits .g-A, .take-splits .g-B { color: var(--good); font-weight: 700; }
+.take-splits .g-C { color: var(--warn); font-weight: 700; }
+.take-splits .g-D, .take-splits .g-F { color: var(--bad); font-weight: 700; }

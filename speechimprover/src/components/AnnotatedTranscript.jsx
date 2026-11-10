@@ -8,6 +8,9 @@ import {
   KIND_META,
   DETAIL_LEVELS,
 } from '../lib/analysis/transcriptAnnotate.js';
+import { paceTimeline } from '../lib/analysis/speechMetrics.js';
+import { PaceChart } from './charts.jsx';
+import { splitTake, splitsFor } from '../lib/analysis/takeSplits.js';
 
 function StatChip({ label, value, tone }) {
   return (
@@ -19,19 +22,20 @@ function StatChip({ label, value, tone }) {
 
 export default function AnnotatedTranscript({ session }) {
   const [level, setLevel] = useState('detailed');
-  const { transcript, prompt, mode } = session || {};
+  const { transcript, prompt, mode, durationSec, paceMarks } = session || {};
 
   const { tokens, stats, hasReference } = useMemo(
-    () => annotateTranscript({ transcript: transcript || '', prompt: prompt || '', mode }),
-    [transcript, prompt, mode]
+    () => annotateTranscript({ transcript: transcript || '', prompt: prompt || '', mode, durationSec }),
+    [transcript, prompt, mode, durationSec]
   );
+  const pace = useMemo(() => paceTimeline(paceMarks), [paceMarks]);
 
   if (!transcript) {
     return <span className="muted">No transcript captured.</span>;
   }
 
   // Which kinds appear in the legend at this level (and actually occur).
-  const legendKinds = ['good', 'fillerHard', 'fillerSoft', 'repeat', 'overused', 'misread', 'extra', 'omission']
+  const legendKinds = ['good', 'fillerHard', 'fillerSoft', 'hedge', 'repeat', 'overused', 'misread', 'extra', 'omission']
     .filter((k) => kindVisibleAt(k, level) === k)
     .filter((k) => (k === 'good' ? hasReference || level === 'granular' : (stats.counts?.[k] || 0) > 0));
 
@@ -72,7 +76,9 @@ export default function AnnotatedTranscript({ session }) {
           {hasReference && stats.accuracy != null && (
             <StatChip label="read accurately" value={`${stats.accuracy}%`} tone={stats.accuracy >= 90 ? 'good' : stats.accuracy >= 70 ? 'warn' : 'bad'} />
           )}
+          {stats.wcpm != null && <StatChip label="words correct / min" value={stats.wcpm} />}
           {stats.fillers > 0 && <StatChip label="fillers" value={stats.fillers} tone="bad" />}
+          {stats.hedges > 0 && <StatChip label={stats.hedges === 1 ? 'hedge' : 'hedges'} value={stats.hedges} tone="warn" />}
           {hasReference && stats.misreads > 0 && <StatChip label="misread" value={stats.misreads} tone="warn" />}
           {hasReference && stats.omissions > 0 && <StatChip label="skipped" value={stats.omissions} tone="warn" />}
           {!hasReference && stats.repeats > 0 && <StatChip label="repeats" value={stats.repeats} tone="warn" />}
@@ -80,6 +86,19 @@ export default function AnnotatedTranscript({ session }) {
       </div>
 
       <p className="transcript-body" style={{ lineHeight: 2 }}>{rendered}</p>
+
+      {pace && (
+        <div style={{ marginTop: 14 }}>
+          <div className="row spread wrap" style={{ gap: 8 }}>
+            <span className="small" style={{ fontWeight: 700 }}>Pace over time</span>
+            <span className="tiny muted">
+              varies {pace.variation}% · {pace.variation < 15 ? 'steady' : pace.variation < 30 ? 'some drift' : 'uneven — watch for rushing'}
+            </span>
+          </div>
+          <PaceChart points={pace.points} />
+          <TakeSplits marks={paceMarks} secs={durationSec} />
+        </div>
+      )}
 
       {legendKinds.length > 0 && (
         <div className="row wrap transcript-legend" style={{ gap: 12, marginTop: 12 }}>
@@ -97,6 +116,41 @@ export default function AnnotatedTranscript({ session }) {
         {level === 'detailed' && 'Fillers, repeats, and (when reading) misread or skipped words are marked. Hover a word for details.'}
         {level === 'granular' && 'Every word is marked, including on-target words. Hover any word for the specifics.'}
       </p>
+    </div>
+  );
+}
+
+// Longer takes: the same take cut into halves / thirds / quarters — each part's
+// pace, fillers and pace grade — plus how well the pace held first → last.
+// Ported from TachyRead's typing-run splits.
+const SPLIT_NAME = { 2: 'Halves', 3: 'Thirds', 4: 'Quarters' };
+function TakeSplits({ marks, secs }) {
+  const options = splitsFor(secs || 0);
+  const [n, setN] = useState(options[0] || 2);
+  const k = options.includes(n) ? n : options[0];
+  const sp = k ? splitTake(marks, secs, k) : null;
+  if (!sp) return null;
+  return (
+    <div className="take-splits">
+      <div className="row wrap" style={{ gap: 6, alignItems: 'center', margin: '10px 0 6px' }}>
+        <div className="pill-group">
+          {options.map((o) => (
+            <button key={o} type="button" className={`pill ${o === k ? 'active' : ''}`} aria-pressed={o === k} onClick={() => setN(o)}>{SPLIT_NAME[o]}</button>
+          ))}
+        </div>
+        <span className={`small g-${sp.diffGrade}`} style={{ marginLeft: 'auto' }}
+          title="Pace held: last part's pace against the first's. Within 5% either way is an A; rushing or flagging both cost grades.">
+          Pace held <b>{sp.diffGrade}</b> ({sp.diffPct > 0 ? '+' : ''}{sp.diffPct}%)
+        </span>
+      </div>
+      <table className="take-splits-table">
+        <thead><tr><th>Part</th><th>Pace</th><th>Fillers</th><th>Pace score</th><th>Grade</th></tr></thead>
+        <tbody>
+          {sp.parts.map((p, i) => (
+            <tr key={i}><td>{i + 1}</td><td>{p.wpm} wpm</td><td>{p.fillers}</td><td>{p.score}</td><td className={`g-${p.grade}`}>{p.grade}</td></tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

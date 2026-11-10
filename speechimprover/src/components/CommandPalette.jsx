@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 const COMMANDS = [
   { id: '', label: 'Dashboard', hint: 'Home & stats' },
+  { id: 'practice', label: 'Just speak', hint: 'Free speaking — start recording now', query: { quick: '1' } },
   { id: 'practice', label: 'Practice', hint: 'Record a new session' },
   { id: 'exercises', label: 'Exercises', hint: 'Drills & daily program' },
   { id: 'projects', label: 'Projects', hint: 'Books & recording series' },
@@ -31,7 +32,7 @@ export default function CommandPalette({ onClose, navigate }) {
 
   useEffect(() => { inputRef.current?.focus(); }, []);
 
-  const run = (c) => { if (c) { navigate(c.id); onClose(); } };
+  const run = (c) => { if (c) { navigate(c.id, c.query ? { query: c.query } : undefined); onClose(); } };
   function onKey(e) {
     if (e.key === 'ArrowDown') { e.preventDefault(); setIdx((i) => Math.min(filtered.length - 1, i + 1)); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setIdx((i) => Math.max(0, i - 1)); }
@@ -55,7 +56,7 @@ export default function CommandPalette({ onClose, navigate }) {
           {filtered.length === 0 && <div className="muted small" style={{ padding: 16 }}>No matches.</div>}
           {filtered.map((c, i) => (
             <button
-              key={c.id || 'home'}
+              key={c.label}
               onMouseEnter={() => setIdx(i)}
               onClick={() => run(c)}
               style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', border: 'none', background: i === idx ? 'var(--surface-2)' : 'transparent', color: 'var(--text)', padding: '11px 16px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.9rem' }}

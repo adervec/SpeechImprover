@@ -25,7 +25,7 @@ const NAV = [
 ];
 
 export function Sidebar({ route, navigate, open, onClose }) {
-  const go = (id) => { navigate(id); onClose?.(); };
+  const go = (id, opts) => { navigate(id, opts); onClose?.(); };
   // While the mobile drawer is open, Escape closes it and the page behind is scroll-locked.
   useEffect(() => {
     if (!open) return undefined;
@@ -68,6 +68,10 @@ export function Sidebar({ route, navigate, open, onClose }) {
         </button>
       ))}
       <div className="nav-spacer" />
+      <button type="button" className="nav-link primary-cta" onClick={() => go('practice', { query: { quick: '1' } })} style={{ color: 'var(--accent)' }}
+        title="Skip setup — free speaking starts after a 3-2-1">
+        <span className="ico">🎙️</span>Just speak
+      </button>
       <button type="button" className="nav-link primary-cta" onClick={() => go('practice')} style={{ color: 'var(--accent)' }}>
         <span className="ico">＋</span>New session
       </button>

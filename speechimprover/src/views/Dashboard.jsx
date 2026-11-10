@@ -60,7 +60,8 @@ export default function Dashboard({ navigate }) {
         </div>
         <div className="row">
           <button className="btn" onClick={() => navigate('exercises')}>✦ Today's program</button>
-          <button className="btn primary" onClick={() => navigate('practice')}>● New session</button>
+          <button className="btn" onClick={() => navigate('practice')}>● New session</button>
+          <button className="btn primary" onClick={() => navigate('practice', { query: { quick: '1' } })} title="Skip setup — free speaking starts after a 3-2-1">🎙️ Just speak</button>
         </div>
       </div>
 

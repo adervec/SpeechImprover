@@ -7,6 +7,7 @@ import { useStore } from '../lib/store.jsx';
 import { listProfiles, personalProfile, PROFILE_GROUPS } from '../lib/voiceProfiles.js';
 import { isTTSSupported, loadVoices, speak, cancelTTS, prepareText } from '../lib/tts.js';
 import { READING_LIBRARY } from '../lib/exercises.js';
+import EchoPractice from '../components/EchoPractice.jsx';
 
 const SLIDERS = [
   { key: 'pitch', label: 'Pitch', min: 0.4, max: 2, step: 0.05 },
@@ -173,6 +174,8 @@ export default function VoiceLab() {
           </span>
         </div>
       </div>
+
+      <EchoPractice />
 
       <p className="tiny muted">
         Voice profiles shape pitch, pace and delivery — they are not voice clones; timbre comes from the system

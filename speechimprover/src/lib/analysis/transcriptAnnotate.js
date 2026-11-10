@@ -6,6 +6,9 @@
 const HARD_FILLERS = new Set(['um', 'uh', 'umm', 'uhh', 'uhm', 'er', 'erm', 'ah', 'eh', 'hmm', 'mm', 'mhm']);
 const SOFT_FILLERS = new Set(['like', 'so', 'actually', 'basically', 'literally', 'right', 'okay', 'well', 'totally', 'seriously']);
 const SOFT_PHRASES = ['you know', 'i mean', 'sort of', 'kind of', 'you see', 'or something'];
+// Hedges: words that soften a claim and cost credibility in free speech.
+const HEDGE_WORDS = new Set(['maybe', 'perhaps', 'probably', 'possibly', 'somewhat', 'hopefully', 'just']);
+const HEDGE_PHRASES = ['i think', 'i guess', 'i feel', 'i suppose', 'i believe', 'a little', 'a bit'];
 
 const STOPWORDS = new Set([
   'the', 'a', 'an', 'and', 'or', 'but', 'if', 'of', 'to', 'in', 'on', 'at',
@@ -77,8 +80,8 @@ export const DETAIL_LEVELS = [
 // Which kinds are visible (vs rendered as plain text) at each level.
 const VISIBLE = {
   summary: new Set(['fillerHard', 'misread', 'omission']),
-  detailed: new Set(['fillerHard', 'fillerSoft', 'misread', 'omission', 'extra', 'repeat']),
-  granular: new Set(['fillerHard', 'fillerSoft', 'misread', 'omission', 'extra', 'repeat', 'overused', 'good']),
+  detailed: new Set(['fillerHard', 'fillerSoft', 'hedge', 'misread', 'omission', 'extra', 'repeat']),
+  granular: new Set(['fillerHard', 'fillerSoft', 'hedge', 'misread', 'omission', 'extra', 'repeat', 'overused', 'good']),
 };
 
 export function kindVisibleAt(kind, level) {
@@ -90,6 +93,7 @@ export const KIND_META = {
   good: { label: 'On target', cls: 'tok-good' },
   fillerHard: { label: 'Filler', cls: 'tok-filler' },
   fillerSoft: { label: 'Filler word', cls: 'tok-filler-soft' },
+  hedge: { label: 'Hedge', cls: 'tok-hedge' },
   repeat: { label: 'Repeat', cls: 'tok-repeat' },
   overused: { label: 'Over-used', cls: 'tok-overused' },
   misread: { label: 'Misread', cls: 'tok-misread' },
@@ -98,7 +102,7 @@ export const KIND_META = {
   neutral: { label: '', cls: '' },
 };
 
-export function annotateTranscript({ transcript = '', prompt = '', mode = 'free' } = {}) {
+export function annotateTranscript({ transcript = '', prompt = '', mode = 'free', durationSec = 0 } = {}) {
   const tTokens = tokenize(transcript);
   const tWords = tTokens.filter((t) => t.isWord);
   if (!tWords.length) {
@@ -135,9 +139,11 @@ export function annotateTranscript({ transcript = '', prompt = '', mode = 'free'
 
   // soft filler phrases (multi-word) → mark the involved word indices
   const phraseHit = new Set();
+  const hedgeHit = new Set();
   for (let k = 0; k < tWords.length - 1; k += 1) {
     const two = `${tWords[k].norm} ${tWords[k + 1].norm}`;
     if (SOFT_PHRASES.includes(two)) { phraseHit.add(k); phraseHit.add(k + 1); }
+    if (HEDGE_PHRASES.includes(two)) { hedgeHit.add(k); hedgeHit.add(k + 1); }
   }
 
   // Resolve a final kind per transcript word, then weave in omission markers.
@@ -161,6 +167,9 @@ export function annotateTranscript({ transcript = '', prompt = '', mode = 'free'
     } else if (kind !== 'misread' && (!useRef || kind === 'extra') && (SOFT_FILLERS.has(t.norm) || phraseHit.has(k))) {
       kind = 'fillerSoft';
       note = 'Filler word — usually trimmable.';
+    } else if (!useRef && (HEDGE_WORDS.has(t.norm) || hedgeHit.has(k))) {
+      kind = 'hedge';
+      note = 'Hedge — softens your point. State it plainly if you mean it.';
     } else if (!useRef && (kind === 'good' || kind === 'neutral') && freq[t.norm] >= 4 && isContent(t.norm)) {
       kind = 'overused';
       note = `Used ${freq[t.norm]} times — vary your wording.`;
@@ -204,7 +213,10 @@ export function annotateTranscript({ transcript = '', prompt = '', mode = 'free'
     words: tWords.length,
     matches,
     accuracy: useRef ? Math.round((matches / Math.max(1, tWords.length + omissions.length - (counts.extra || 0))) * 100) : null,
+    // Words correct per minute — the standard oral-reading-fluency number.
+    wcpm: useRef && durationSec > 0 ? Math.round(matches / (durationSec / 60)) : null,
     fillers: (counts.fillerHard || 0) + (counts.fillerSoft || 0),
+    hedges: counts.hedge || 0,
     repeats: counts.repeat || 0,
     misreads: counts.misread || 0,
     omissions: omissions.length,

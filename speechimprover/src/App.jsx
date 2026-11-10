@@ -67,7 +67,7 @@ class ErrorBoundary extends Component {
 function View({ route, navigate }) {
   switch (route.page) {
     case 'practice':
-      return <Practice key={`${route.query.exercise || route.query.technique || 'new'}-${route.query.step ?? route.query.stage ?? ''}`} route={route} navigate={navigate} />;
+      return <Practice key={`${route.query.exercise || route.query.technique || (route.query.quick ? 'quick' : 'new')}-${route.query.step ?? route.query.stage ?? ''}`} route={route} navigate={navigate} />;
     case 'exercises':
       return <Exercises route={route} navigate={navigate} />;
     case 'projects':
