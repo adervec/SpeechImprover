@@ -86,7 +86,11 @@ export default function Settings() {
     <div className="stack">
       {/* Themes */}
       <div className="card">
-        <div className="card-head"><h3>Theme</h3></div>
+        <div className="card-head">
+          <h3>Theme</h3>
+          {/* Shared house-font picker from adervec.github.io/font.js — the choice applies to every app there. */}
+          <app-font-picker label="Font" class="small"></app-font-picker>
+        </div>
         <div className="grid cols-3">
           {THEME_KEYS.map((key) => {
             const t = THEMES[key];

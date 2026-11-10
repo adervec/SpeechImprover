@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "audit:content": "node scripts/scrape-passages.mjs --audit",
-    "test": "node scripts/selftest.mjs && node scripts/check-transcript.mjs"
+    "test": "node scripts/selftest.mjs && node scripts/check-transcript.mjs && node scripts/check-font.mjs"
   },
   "dependencies": {
     "react": "^19.2.6",
