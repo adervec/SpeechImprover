@@ -28,3 +28,6 @@ desktop.ini
 # Node (defensive — also covered by speechimprover/.gitignore)
 node_modules/
 dist/
+
+# local launcher for resuming the Claude Code session in this folder
+RESUME CLAUDE*.ps1
