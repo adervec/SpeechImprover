@@ -38,6 +38,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Self-checks (every module's demo())
+        run: npm test
+
       - name: Audit passage corpus (public-domain policy + provenance)
         run: npm run audit:content
 
