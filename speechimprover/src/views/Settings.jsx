@@ -260,7 +260,7 @@ export default function Settings() {
 const SYNC_LABEL = { syncing: 'Syncing…', synced: 'Up to date', error: 'Sync error', idle: 'Idle' };
 
 function CloudSync() {
-  const { configured, connected, status, lastSyncedAt, error, connect, disconnect, syncNow } = useDriveSync();
+  const { configured, connected, account, status, lastSyncedAt, error, connect, disconnect, syncNow } = useDriveSync();
 
   if (!configured) {
     return (
@@ -292,6 +292,17 @@ function CloudSync() {
         </>
       ) : (
         <>
+          {account && (
+            <div className="row" style={{ gap: 8, alignItems: 'center', marginBottom: 10 }}>
+              {account.picture && (
+                <img src={account.picture} alt="" referrerPolicy="no-referrer" width="24" height="24"
+                  style={{ borderRadius: '50%', objectFit: 'cover' }} />
+              )}
+              <span className="small">
+                Signed in as <b>{account.name}</b>{account.email && account.email !== account.name ? <span className="muted"> · {account.email}</span> : null}
+              </span>
+            </div>
+          )}
           <p className="small" style={{ marginBottom: 12 }}>
             {status === 'error'
               ? <span style={{ color: 'var(--bad)' }}>Couldn’t sync: {error} — try “Sync now”, or reconnect.</span>

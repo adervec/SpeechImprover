@@ -17,6 +17,7 @@
 //   only runs while a tab is open — there is no backend to sync when closed.
 /* eslint-disable react-refresh/only-export-components -- provider + its hook/helpers share this file. */
 
+import { fetchAccount } from './googleAccount.js';
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useStore } from './store.jsx';
 import {
@@ -48,7 +49,11 @@ function originAllowed() {
 const CLIENT_ID =
   (import.meta.env.VITE_GOOGLE_CLIENT_ID || '').trim() ||
   (originAllowed() ? BUILTIN_CLIENT_ID : '');
-const SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+// drive.appdata for sync, plus the identity scopes so Settings can show which
+// Google account is connected (name + photo). Older grants without the identity
+// scopes still sync: a silent refresh falls back to DRIVE_SCOPE alone.
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+const SCOPE = `openid email profile ${DRIVE_SCOPE}`;
 const FILE_NAME = 'speechimprover-sync.json';
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
 const POLL_MS = 45000; // pull other devices' changes while the tab is open
@@ -126,19 +131,24 @@ async function ensureTokenClient() {
   return tokenClient;
 }
 
-function requestToken({ interactive }) {
+function requestToken({ interactive, scope = SCOPE }) {
   return new Promise((resolve, reject) => {
     ensureTokenClient()
       .then((tc) => {
         tc.callback = (resp) => {
-          if (resp.error) return reject(new Error(resp.error));
+          if (resp.error) {
+            // A silent refresh for a grant made before the identity scopes were
+            // added needs fresh consent — keep syncing on the Drive scope alone.
+            if (!interactive && scope !== DRIVE_SCOPE) return requestToken({ interactive, scope: DRIVE_SCOPE }).then(resolve, reject);
+            return reject(new Error(resp.error));
+          }
           accessToken = resp.access_token;
           tokenExpiry = Date.now() + (Number(resp.expires_in || 3600) - 60) * 1000; // refresh 1min early
           resolve(accessToken);
         };
         // prompt:'' = silent (only works once the user has granted before);
         // prompt:'consent' forces the interactive grant on first connect.
-        tc.requestAccessToken({ prompt: interactive ? 'consent' : '' });
+        tc.requestAccessToken({ prompt: interactive ? 'consent' : '', scope });
       })
       .catch(reject);
   });
@@ -230,9 +240,11 @@ export function DriveSyncProvider({ children }) {
   const [status, setStatus] = useState('idle'); // idle | syncing | synced | error
   const [lastSyncedAt, setLastSyncedAt] = useState(null);
   const [error, setError] = useState(null);
+  const [account, setAccount] = useState(null); // { name, email, picture } of the connected Google account
   const syncingRef = useRef(false);
   const debounceRef = useRef(null);
   const prevIdsRef = useRef(null);
+  const accountFetchedRef = useRef(false);
 
   const buildLocalDoc = useCallback(async () => {
     const rows = await getAllSessions();
@@ -296,7 +308,11 @@ export function DriveSyncProvider({ children }) {
       setStatus('syncing');
       setError(null);
       try {
-        await getToken({ interactive });
+        const token = await getToken({ interactive });
+        if (!accountFetchedRef.current) {
+          accountFetchedRef.current = true;
+          fetchAccount(token).then(setAccount);
+        }
         const remote = await readRemote();
         const local = await buildLocalDoc();
         const merged = mergeDocs(local, remote?.doc || null);
@@ -329,6 +345,8 @@ export function DriveSyncProvider({ children }) {
     }
     accessToken = null;
     tokenExpiry = 0;
+    accountFetchedRef.current = false;
+    setAccount(null);
     setConnected(false);
     setStatus('idle');
     setError(null);
@@ -370,6 +388,7 @@ export function DriveSyncProvider({ children }) {
   const value = {
     configured: isConfigured(),
     connected,
+    account,
     status,
     lastSyncedAt,
     error,
