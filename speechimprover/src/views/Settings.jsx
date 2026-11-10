@@ -7,6 +7,8 @@ import { Modal, useToast } from '../components/ui.jsx';
 import { THEMES, THEME_KEYS } from '../styles/themes.js';
 import { exportData, importData, downloadJson } from '../lib/exportImport.js';
 import { formatBytes } from '../lib/format.js';
+import { eraseAllLocalData } from '../lib/eraseAll.js';
+import { deleteDatabase } from '../lib/db.js';
 import {
   FS_SUPPORTED, pickNarrationDir, getNarrationDir, forgetNarrationDir,
   ensureReadPermission, scanNarrationDir,
@@ -15,8 +17,9 @@ import {
 export default function Settings() {
   const {
     settings, updateSettings, profile, updateProfile, sessions,
-    purgeAllAudio, resetAllData, refresh, addSession,
+    purgeAllAudio, refresh, addSession,
   } = useStore();
+  const drive = useDriveSync();
   const { startMonitor, stopMonitor, isMonitoring, recognitionSupported } = useRecorder();
   const { inputs, outputs, hasLabels, refresh: refreshDevices } = useMediaDevices();
   const toast = useToast();
@@ -222,16 +225,16 @@ export default function Settings() {
         <h4 style={{ margin: '12px 0 8px' }}>Purge &amp; reset</h4>
         <div className="row wrap">
           <button className="btn" disabled={!audioCount} onClick={() => setConfirm('audio')}>Purge all audio (keep scores)</button>
-          <button className="btn danger" disabled={!sessions.length} onClick={() => setConfirm('all')}>Delete everything</button>
+          <button className="btn danger" onClick={() => setConfirm('all')}>Erase everything on this device</button>
         </div>
         <p className="tiny muted" style={{ marginTop: 10 }}>
-          Purging audio frees space while preserving all scores and trends. Deleting everything cannot be undone — export first.
+          Purging audio frees space while preserving all scores and trends. Erasing removes every SpeechImprover recording, setting, project and program from this device and cannot be undone — export first. Other apps' data is left alone.
         </p>
       </div>
 
       {confirm && (
         <Modal
-          title={confirm === 'audio' ? 'Purge all audio?' : 'Delete everything?'}
+          title={confirm === 'audio' ? 'Purge all audio?' : 'Erase everything on this device?'}
           onClose={() => setConfirm(null)}
           footer={<>
             <button className="btn ghost" onClick={() => setConfirm(null)}>Cancel</button>
@@ -239,17 +242,29 @@ export default function Settings() {
               className={`btn ${confirm === 'all' ? 'danger' : 'primary'}`}
               onClick={async () => {
                 if (confirm === 'audio') { await purgeAllAudio(); toast('All audio purged.'); }
-                else { await resetAllData(); toast('All data deleted.'); }
+                else {
+                  if (drive.connected) drive.disconnect(); // stop sync first so nothing re-downloads
+                  await eraseAllLocalData({ deleteDb: deleteDatabase });
+                  window.location.reload(); // drop in-memory state too; app restarts empty
+                  return;
+                }
                 setConfirm(null);
               }}
             >
-              {confirm === 'audio' ? 'Purge audio' : 'Delete all'}
+              {confirm === 'audio' ? 'Purge audio' : 'Erase everything'}
             </button>
           </>}
         >
           <p className="muted">
             {confirm === 'audio' && `This deletes ${audioCount} audio recording(s) (${formatBytes(totalAudio)}) but keeps every score, metric and trend.`}
-            {confirm === 'all' && 'This permanently deletes all sessions, scores and audio from this device. Consider exporting first.'}
+            {confirm === 'all' && (
+              <>
+                This permanently deletes all of SpeechImprover’s data on this device — sessions, scores, audio,
+                projects, program, profile and settings — then restarts the app empty. Consider exporting first.
+                {drive.connected && <> Google Drive will be disconnected; <b>the copy in your Drive is not touched</b> (reconnect later to restore it, or remove it from Drive’s “Manage apps”).</>}
+                {' '}Other apps on this site keep their data.
+              </>
+            )}
           </p>
         </Modal>
       )}

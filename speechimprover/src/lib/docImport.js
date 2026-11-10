@@ -1,9 +1,8 @@
 // Turn a dropped document into plain text for a reading project.
-// ponytail: TXT/MD/HTML natively; PDF via pdf.js pulled from cdnjs on demand (zero
-// bundle cost, needs network once). DOCX/EPUB are zips — paste the text for now;
+// ponytail: TXT/MD/HTML natively; PDF via the bundled pdf.js, split into its own
+// chunk that loads only when a PDF is dropped (no third-party CDN). DOCX/EPUB are zips — paste the text for now;
 // add a DecompressionStream zip reader if it comes up.
 
-const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs';
 export const ACCEPT = '.txt,.md,.markdown,.text,.html,.htm,.pdf';
 
 export async function fileToText(file) {
@@ -23,8 +22,11 @@ export function htmlToText(html) {
 }
 
 async function pdfToText(file) {
-  const pdfjs = await import(/* @vite-ignore */ PDFJS);
-  pdfjs.GlobalWorkerOptions.workerSrc = PDFJS.replace('pdf.min.mjs', 'pdf.worker.min.mjs');
+  const [pdfjs, { default: workerSrc }] = await Promise.all([
+    import('pdfjs-dist'),
+    import('pdfjs-dist/build/pdf.worker.min.mjs?url'),
+  ]);
+  pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
   const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
   const pages = [];
   for (let i = 1; i <= pdf.numPages; i += 1) {

@@ -108,6 +108,20 @@ export async function getAllAudioMeta() {
   return (rows || []).map((r) => ({ id: r.id, bytes: r.bytes, mime: r.mime }));
 }
 
+// Close our connection, then delete the whole database (fsHandles included).
+export async function deleteDatabase() {
+  if (dbPromise) {
+    try { (await dbPromise).close(); } catch { /* never opened */ }
+    dbPromise = null;
+  }
+  await new Promise((resolve, reject) => {
+    const req = indexedDB.deleteDatabase(DB_NAME);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+    req.onblocked = () => resolve(); // another tab holds it open; it goes once that tab closes
+  });
+}
+
 export async function clearAll() {
   await tx(STORE_SESSIONS, 'readwrite', (store) => reqToPromise(store.clear()));
   await tx(STORE_AUDIO, 'readwrite', (store) => reqToPromise(store.clear()));
