@@ -1,127 +1,28 @@
-// Cowork Sync — hand recent practice to an AI agent via CoworkSyncHub's folder
-// handshake (cowork-manifest v1). Push requests into a chosen local folder; the hub
-// (or any agent pointed at the folder) writes replies back, which we import: coach
-// feedback shows here; a program reply becomes a runnable daily program.
+// Cowork Sync — hand recent practice to an AI agent through a shared folder, with
+// the maker's shared engine (cowork v2, fs mode — see lib/coworkEngine.jsx): named
+// channels (coach, program), a schedule per channel on the one sync device,
+// review before applying (on by default, per channel), run history with undo.
+// A manual download / paste flow remains for browsers without folder access.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useStore } from '../lib/store.jsx';
 import { useToast } from '../components/ui.jsx';
 import { formatDateTime } from '../lib/format.js';
 import {
-  buildCoworkDataset, buildRequestFiles, availableExercises, contentHash,
-  parseReply, programStepsFromReply, loadCoworkState, saveCoworkState,
+  buildCoworkDataset, buildRequestFiles, parseReply, coachRecord, programStepsFromAccepted,
 } from '../lib/cowork.js';
-import {
-  FS_SUPPORTED, pickCoworkDir, getSavedDir, forgetDir, ensurePermission, readFileAt, writeFiles,
-} from '../lib/coworkFs.js';
-
-// The shared AI-cowork-sync panel (https://adervec.github.io/cowork.js) — the same chrome every app and
-// CoworkSyncHub show. It's loaded from the maker portal; if it can't load (offline first run) the plain
-// cards below stay in place.
-function usePanelReady() {
-  const [ready, setReady] = useState(() => !!(window.customElements && customElements.get('cowork-panel')));
-  useEffect(() => {
-    if (ready || !window.customElements) return undefined;
-    let on = true;
-    customElements.whenDefined('cowork-panel').then(() => { if (on) setReady(true); });
-    return () => { on = false; };
-  }, [ready]);
-  return ready;
-}
+import { useCoworkPanel, applyCoachRecord } from '../lib/coworkEngine.jsx';
 
 export default function Cowork({ navigate }) {
   const { sessions, profile, startProgram } = useStore();
   const toast = useToast();
-  const [dir, setDir] = useState(null);
-  const [st, setSt] = useState(loadCoworkState);
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState('');
+  const hostRef = useRef(null);
+  const [ready, coach] = useCoworkPanel(hostRef);
   const [pasteChannel, setPasteChannel] = useState('coach');
   const [pasted, setPasted] = useState('');
-  const panelReady = usePanelReady();
-  const panelRef = useRef(null);
-
+  const [msg, setMsg] = useState('');
   const dataset = useMemo(() => buildCoworkDataset(sessions, profile), [sessions, profile]);
-
-  useEffect(() => {
-    getSavedDir().then((h) => { if (h) setDir(h); }).catch(() => {});
-  }, []);
-
-  function persist(patch) { setSt((prev) => { const next = { ...prev, ...patch }; saveCoworkState(next); return next; }); }
-
-  async function chooseFolder() {
-    setMsg('');
-    try {
-      const h = await pickCoworkDir();
-      setDir(h);
-      persist({ dirName: h.name });
-      setMsg('Folder connected — push your requests next.');
-    } catch (e) { if (e?.name !== 'AbortError') setMsg(`Could not open folder: ${e?.message || e}`); }
-  }
-
-  async function disconnect() {
-    await forgetDir().catch(() => {});
-    setDir(null);
-    persist({ dirName: '' });
-  }
-
-  async function pushRequests() {
-    if (!dir) return;
-    setBusy(true); setMsg('');
-    try {
-      if (!(await ensurePermission(dir, 'readwrite'))) { setMsg('Folder write permission was declined.'); setBusy(false); return; }
-      await writeFiles(dir, buildRequestFiles(dataset));
-      persist({
-        lastPush: new Date().toISOString(),
-        coachHash: contentHash(JSON.stringify(dataset)),
-        programHash: contentHash(JSON.stringify({ ...dataset, availableExercises: availableExercises() })),
-      });
-      setMsg('Wrote cowork.json + coach & program requests. Run CoworkSyncHub (or point an agent at the folder), then Import replies.');
-      toast('Cowork requests written.', { type: 'success' });
-    } catch (e) { setMsg(`Write failed: ${e?.message || e}`); }
-    setBusy(false);
-  }
-
-  function importCoach(reply) {
-    persist({
-      coach: {
-        analysis: reply.analysis || '',
-        focusAreas: Array.isArray(reply.focusAreas) ? reply.focusAreas : [],
-        tips: Array.isArray(reply.tips) ? reply.tips : [],
-        encouragement: reply.encouragement || '',
-        at: new Date().toISOString(),
-        stale: !!(st.coachHash && reply.requestHash && reply.requestHash !== st.coachHash),
-      },
-    });
-    toast('Coach feedback imported.', { type: 'success' });
-  }
-  function importProgram(reply) {
-    const steps = programStepsFromReply(reply);
-    if (!steps.length) { setMsg('The program reply had no exercise ids I recognise.'); return false; }
-    if (st.programHash && reply.requestHash && reply.requestHash !== st.programHash) {
-      setMsg('Note: the program reply answered an older request — importing anyway.');
-    }
-    startProgram(steps, (dataset.focusAreas || []).map((f) => f.attribute));
-    persist({ programAt: new Date().toISOString() });
-    toast(`Imported a ${steps.length}-step program.`, { type: 'success' });
-    return true;
-  }
-
-  async function importReplies() {
-    if (!dir) return;
-    setBusy(true); setMsg('');
-    try {
-      if (!(await ensurePermission(dir, 'readwrite'))) { setMsg('Folder permission was declined.'); setBusy(false); return; }
-      let found = 0; let started = false;
-      const coachText = await readFileAt(dir, 'coach/reply.json');
-      if (coachText) { importCoach(parseReply(coachText)); found += 1; }
-      const programText = await readFileAt(dir, 'program/reply.json');
-      if (programText) { started = importProgram(parseReply(programText)); found += programText ? 1 : 0; }
-      if (!found) setMsg('No replies yet (looking for coach/reply.json or program/reply.json).');
-      else if (started) { setTimeout(() => navigate('exercises'), 400); }
-    } catch (e) { setMsg(`Import failed: ${e?.message || e}`); }
-    setBusy(false);
-  }
+  const canRun = sessions.length > 0;
 
   function downloadRequest(channel) {
     const f = buildRequestFiles(dataset).find((x) => x.path === `${channel}/request.json`);
@@ -130,61 +31,36 @@ export default function Cowork({ navigate }) {
     a.href = url; a.download = `speechimprover-${channel}-request.json`; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
   }
+
+  // Pasting a reply by hand IS the review step — the speaker chose to apply it.
   function importPasted() {
     setMsg('');
     let reply;
     try { reply = parseReply(pasted); } catch { setMsg('That is not valid JSON.'); return; }
-    if (pasteChannel === 'coach') importCoach(reply); else if (importProgram(reply)) setTimeout(() => navigate('exercises'), 400);
+    if (pasteChannel === 'coach') {
+      applyCoachRecord(coachRecord(reply));
+      toast('Coach feedback imported.', { type: 'success' });
+    } else {
+      const steps = programStepsFromAccepted(reply, null);
+      if (!steps.length) { setMsg('The program reply had no exercise ids I recognise.'); return; }
+      startProgram(steps, (dataset.focusAreas || []).map((f) => f.attribute));
+      toast(`Imported a ${steps.length}-step program.`, { type: 'success' });
+      setTimeout(() => navigate('exercises'), 400);
+    }
     setPasted('');
   }
-
-  const canRun = sessions.length > 0;
-
-  // feed the shared panel; its buttons come back as `cowork-action` events
-  useEffect(() => {
-    const p = panelRef.current;
-    if (!p || !panelReady) return;
-    p.setAttribute('mode', 'data'); // attribute, not a JSX prop: React 19 would assign a property
-    const t = (iso) => (iso ? Date.parse(iso) / 1000 : 0);
-    const req = t(st.lastPush);
-    const row = (name, replyAt) => ({
-      channel: name, request_mtime: req, reply_mtime: t(replyAt),
-      pending: !!req && t(replyAt) < req, answered: !!req && t(replyAt) >= req,
-    });
-    p.data = {
-      app: 'speechimprover', folder: dir ? dir.name : 'no folder connected',
-      channels: [row('coach', st.coach?.at), row('program', st.programAt)],
-      actions: [
-        ...(FS_SUPPORTED ? [{ id: 'connect', label: dir ? 'Change folder' : 'Connect folder', primary: !dir }] : []),
-        ...(dir ? [{ id: 'push', label: 'Send requests', primary: true }, { id: 'poll', label: 'Check for replies' }, { id: 'disconnect', label: 'Disconnect' }] : []),
-      ],
-      channelActions: [],
-      message: msg,
-    };
-  }, [panelReady, dir, st, msg]);
-  useEffect(() => {
-    const p = panelRef.current;
-    if (!p) return undefined;
-    const h = (ev) => {
-      const a = ev.detail?.action;
-      if (a === 'connect') chooseFolder();
-      else if (a === 'push') pushRequests();
-      else if (a === 'poll') importReplies();
-      else if (a === 'disconnect') disconnect();
-    };
-    p.addEventListener('cowork-action', h);
-    return () => p.removeEventListener('cowork-action', h);
-  });
 
   return (
     <div className="stack">
       <div className="card">
-        <div className="card-head"><h3>🤝 Cowork Sync</h3><span className="tiny muted">CoworkSyncHub · manifest v1</span></div>
+        <div className="card-head"><h3>🤝 Cowork Sync</h3><span className="tiny muted">CoworkSyncHub · cowork v2</span></div>
         <p className="muted small" style={{ margin: 0 }}>
           Hand your recent practice to an AI agent through a shared folder. SpeechImprover writes a
-          <b> cowork.json</b> manifest plus two channel requests — <b>coach</b> (feedback) and <b>program</b>
-          {' '}(a targeted daily plan). <a href="https://github.com/adervec/CoworkSyncHub" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>CoworkSyncHub</a> runs
-          Claude on them and writes replies back, which you import here. Everything stays on your device.
+          <b> cowork.json</b> manifest plus two channels — <b>coach</b> (feedback) and <b>program</b> (a targeted
+          daily plan). <a href="https://github.com/adervec/CoworkSyncHub" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>CoworkSyncHub</a> (or
+          any agent pointed at the folder) writes replies back. <b>Every reply waits for your review</b> before it
+          changes anything — untick “review first” on a channel to apply its replies automatically. Applied replies
+          can be undone from the run history. Everything stays on your device.
         </p>
       </div>
 
@@ -194,63 +70,26 @@ export default function Cowork({ navigate }) {
         </div>
       )}
 
-      <cowork-panel ref={panelRef} style={{ display: panelReady ? 'block' : 'none' }} />
-
-      {!panelReady && (FS_SUPPORTED ? (
-        <div className="card">
-          <div className="card-head"><h3>1 · Folder</h3>{dir && <span className="badge good">connected</span>}</div>
-          {dir ? (
-            <div className="row spread wrap" style={{ gap: 10 }}>
-              <span className="small">📁 <b>{dir.name}</b>{st.lastPush && <span className="tiny muted"> · last push {formatDateTime(st.lastPush)}</span>}</span>
-              <div className="row">
-                <button className="btn ghost sm" onClick={chooseFolder}>Change</button>
-                <button className="btn ghost sm danger" onClick={disconnect}>Disconnect</button>
-              </div>
-            </div>
-          ) : (
-            <div className="row wrap" style={{ gap: 10 }}>
-              <button className="btn primary" onClick={chooseFolder}>Choose cowork folder…</button>
-              <span className="small muted">Pick (or make) a folder the hub watches. Its handle is remembered on this device.</span>
-            </div>
-          )}
-        </div>
-      ) : (
+      <div ref={hostRef} />
+      {!ready && (
         <div className="card tight" style={{ borderColor: 'var(--warn)' }}>
-          <span className="small">This browser can't write folders directly. Use the manual flow below (download a request, run the agent, paste its reply). For the full folder handshake, use Chrome or Edge on desktop.</span>
-        </div>
-      ))}
-
-      {!panelReady && FS_SUPPORTED && dir && (
-        <div className="grid cols-2">
-          <div className="card">
-            <div className="card-head"><h3>2 · Push requests</h3></div>
-            <p className="tiny muted" style={{ marginTop: 0 }}>
-              Writes <span className="mono">cowork.json</span>, <span className="mono">coach/</span> and <span className="mono">program/</span> with your latest {dataset.totals?.sessions ?? 0} sessions of context.
-            </p>
-            <button className="btn primary block" disabled={busy || !canRun} onClick={pushRequests}>⬆ Write coach + program requests</button>
-          </div>
-          <div className="card">
-            <div className="card-head"><h3>3 · Import replies</h3></div>
-            <p className="tiny muted" style={{ marginTop: 0 }}>
-              Reads <span className="mono">coach/reply.json</span> and <span className="mono">program/reply.json</span> back. A program reply starts a daily program.
-            </p>
-            <button className="btn block" disabled={busy} onClick={importReplies}>⬇ Import replies</button>
-          </div>
+          <span className="small">
+            The shared cowork panel couldn't load (it comes from adervec.github.io — are you offline?). Use the
+            manual flow below for now.
+          </span>
         </div>
       )}
 
-      {!panelReady && msg && <div className="card tight"><span className="small">{msg}</span></div>}
-
-      {st.coach && (
+      {coach && (
         <div className="card" style={{ borderColor: 'var(--accent)' }}>
           <div className="card-head">
             <h3>🧠 Coach feedback</h3>
-            <span className="tiny muted">{st.coach.at ? formatDateTime(st.coach.at) : ''}{st.coach.stale ? ' · from an earlier request' : ''}</span>
+            <span className="tiny muted">{coach.at ? formatDateTime(coach.at) : ''}</span>
           </div>
-          {st.coach.analysis && <p className="small" style={{ marginTop: 0 }}>{st.coach.analysis}</p>}
-          {st.coach.focusAreas?.length > 0 && (
+          {coach.analysis && <p className="small" style={{ marginTop: 0 }}>{coach.analysis}</p>}
+          {coach.focusAreas?.length > 0 && (
             <div className="stack" style={{ gap: 8, marginBottom: 8 }}>
-              {st.coach.focusAreas.map((f, i) => (
+              {coach.focusAreas.map((f, i) => (
                 <div key={i} className="card tight" style={{ background: 'var(--bg-2)' }}>
                   <b className="small">{f.attribute}</b>
                   {f.why && <div className="tiny muted">{f.why}</div>}
@@ -259,12 +98,12 @@ export default function Cowork({ navigate }) {
               ))}
             </div>
           )}
-          {st.coach.tips?.length > 0 && (
+          {coach.tips?.length > 0 && (
             <ul className="small" style={{ margin: '4px 0', paddingLeft: 18 }}>
-              {st.coach.tips.map((t, i) => <li key={i}>{t}</li>)}
+              {coach.tips.map((t, i) => <li key={i}>{t}</li>)}
             </ul>
           )}
-          {st.coach.encouragement && <p className="small" style={{ color: 'var(--good)', marginBottom: 0 }}>{st.coach.encouragement}</p>}
+          {coach.encouragement && <p className="small" style={{ color: 'var(--good)', marginBottom: 0 }}>{coach.encouragement}</p>}
         </div>
       )}
 
@@ -282,6 +121,7 @@ export default function Cowork({ navigate }) {
         </div>
         <textarea value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder={`Paste the ${pasteChannel} reply JSON here…`} rows={5} />
         <button className="btn sm" style={{ marginTop: 8 }} disabled={!pasted.trim()} onClick={importPasted}>Import pasted {pasteChannel} reply</button>
+        {msg && <p className="small" style={{ marginTop: 8 }}>{msg}</p>}
       </details>
     </div>
   );

@@ -1,6 +1,7 @@
 import { Component, useEffect, useState } from 'react';
 import { StoreProvider, useStore } from './lib/store.jsx';
 import { DriveSyncProvider } from './lib/driveSync.jsx';
+import { CoworkEngine } from './lib/coworkEngine.jsx';
 import { RecorderProvider, useRecorder } from './lib/recorderContext.jsx';
 import { ToastProvider } from './components/ui.jsx';
 import { Sidebar, DeviceBar, RecordingIndicator } from './components/layout.jsx';
@@ -200,6 +201,7 @@ export default function App() {
       <StoreProvider>
         <DriveSyncProvider>
           <RecorderProvider>
+            <CoworkEngine />
             <Shell />
           </RecorderProvider>
         </DriveSyncProvider>

@@ -7,7 +7,7 @@
 //   - coach   → structured coaching read on recent practice (shown in the app)
 //   - program → a runnable daily practice program targeting the speaker's weaknesses
 //
-// Pure + node-testable (see demo()). Folder I/O lives in coworkFs.js; UI in views/Cowork.jsx.
+// Pure + node-testable (see demo()). The shared engine (lib/coworkEngine.jsx) does folder I/O; UI in views/Cowork.jsx.
 // Reply parsing is tolerant (bare JSON or an envelope with a `payload`) — see COWORK-PROTOCOL.md.
 
 import { buildProgressSummary } from './progressSummary.js';
@@ -88,6 +88,10 @@ Write your reply to \`coach/reply.json\` as JSON:
 \`\`\`
 
 Keep it under ~200 words total. Scores are 0-100.
+
+If you cannot do this (missing or unreadable data), write \`coach/reply-error.json\`
+instead: \`{ "requestHash": "<copy verbatim>", "reason": "one line on why" }\`.
+The speaker reviews every reply before it changes anything in the app.
 `;
 
 export const PROGRAM_INSTRUCTIONS = `# SpeechImprover — Program channel
@@ -112,6 +116,10 @@ Write your reply to \`program/reply.json\`:
 \`\`\`
 
 Use only ids that appear in \`payload.availableExercises\`. Return 3-6 ids.
+
+If you cannot do this, write \`program/reply-error.json\` instead:
+\`{ "requestHash": "<copy verbatim>", "reason": "one line on why" }\`.
+The speaker reviews the program (and can untick exercises) before it starts.
 `;
 
 // The exact files the app drops into the folder for one push.
@@ -136,6 +144,51 @@ export function parseReply(text) {
 export function programStepsFromReply(reply) {
   const ids = Array.isArray(reply?.exercises) ? reply.exercises : [];
   return ids.map((id) => getExercise(id)).filter(Boolean);
+}
+
+// ---- review rows + apply data for the shared engine (cowork v2, house standard 3) ----
+// Review-first is on by default per channel: the panel lists these rows, the speaker
+// ticks what to accept, and apply() returns undo data the run history can reverse.
+
+// Coach: one row — show this feedback (replacing the current one).
+export function coachPreview(reply) {
+  const r = parseReplyObject(reply);
+  const focus = (r.focusAreas || []).map((f) => f.attribute).filter(Boolean);
+  return [{
+    id: 'coach',
+    label: 'Show this coach feedback in SpeechImprover (replaces the current one)',
+    detail: [r.analysis, focus.length ? `Focus: ${focus.join(', ')}` : ''].filter(Boolean).join(' · ').slice(0, 400),
+  }];
+}
+export function coachRecord(reply) {
+  const r = parseReplyObject(reply);
+  return {
+    analysis: r.analysis || '',
+    focusAreas: Array.isArray(r.focusAreas) ? r.focusAreas : [],
+    tips: Array.isArray(r.tips) ? r.tips : [],
+    encouragement: r.encouragement || '',
+    at: new Date().toISOString(),
+  };
+}
+
+// Program: one row per recognised exercise, so the speaker can drop any of them.
+export function programPreview(reply) {
+  const r = parseReplyObject(reply);
+  return programStepsFromReply(r).map((ex, i) => ({
+    id: ex.id,
+    label: `${i + 1}. ${ex.title}`,
+    detail: [ex.category, (ex.targetAttributes || []).join(', ')].filter(Boolean).join(' · ') + (i === 0 && r.note ? ` — ${r.note}` : ''),
+  }));
+}
+// Accepted ids, in the reply's order, as runnable exercises.
+export function programStepsFromAccepted(reply, acceptedIds) {
+  const keep = acceptedIds ? new Set(acceptedIds) : null;
+  return programStepsFromReply(parseReplyObject(reply)).filter((ex) => !keep || keep.has(ex.id));
+}
+
+// The engine hands over parsed JSON; the manual paste flow hands over text.
+function parseReplyObject(reply) {
+  return typeof reply === 'string' ? parseReply(reply) : (reply?.payload && reply.analysis == null && reply.exercises == null ? reply.payload : reply || {});
 }
 
 // ---- persisted cowork UI state (localStorage) ----
@@ -165,5 +218,15 @@ export function demo() {
   console.assert(parseReply(JSON.stringify({ analysis: 'bare' })).analysis === 'bare', 'bare reply kept');
   const steps = programStepsFromReply({ exercises: ['baseline-read', 'nope-xyz'] });
   console.assert(steps.length === 1 && steps[0].id === 'baseline-read', 'program keeps only valid ids');
+  // v2 review rows (thrown, not console.assert, so npm test catches them)
+  const ok = (c, m) => { if (!c) throw new Error(`cowork: ${m}`); };
+  const ids = EXERCISES.slice(0, 3).map((e) => e.id);
+  const prog = { requestHash: 'x', exercises: [...ids, 'nope-xyz'], note: 'why' };
+  const rows = programPreview(prog);
+  ok(rows.length === 3 && rows.every((r, i) => r.id === ids[i]), 'one review row per known exercise, unknown dropped');
+  ok(programStepsFromAccepted(prog, [ids[2], ids[0]]).map((e) => e.id).join() === [ids[0], ids[2]].join(), 'only ticked rows, in reply order');
+  ok(programStepsFromAccepted(prog, null).length === 3, 'review off → everything');
+  ok(coachPreview({ analysis: 'Good pace', focusAreas: [{ attribute: 'Expressiveness' }] })[0].detail.includes('Expressiveness'), 'coach row shows focus');
+  ok(coachRecord({ payload: { analysis: 'wrapped' } }).analysis === 'wrapped', 'envelope reply unwrapped');
   return ds;
 }

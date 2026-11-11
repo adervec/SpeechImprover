@@ -7,7 +7,7 @@ import { Modal, useToast } from '../components/ui.jsx';
 import { THEMES, THEME_KEYS } from '../styles/themes.js';
 import { exportData, importData, downloadJson } from '../lib/exportImport.js';
 import { formatBytes, localDayKey } from '../lib/format.js';
-import { eraseAllLocalData } from '../lib/eraseAll.js';
+import { eraseAllLocalData, dropCoworkFolder } from '../lib/eraseAll.js';
 import { deleteDatabase } from '../lib/db.js';
 import {
   FS_SUPPORTED, pickNarrationDir, getNarrationDir, forgetNarrationDir,
@@ -244,7 +244,7 @@ export default function Settings() {
                 if (confirm === 'audio') { await purgeAllAudio(); toast('All audio purged.'); }
                 else {
                   if (drive.connected) drive.disconnect(); // stop sync first so nothing re-downloads
-                  await eraseAllLocalData({ deleteDb: deleteDatabase });
+                  await eraseAllLocalData({ deleteDb: deleteDatabase, dropFolder: dropCoworkFolder });
                   window.location.reload(); // drop in-memory state too; app restarts empty
                   return;
                 }

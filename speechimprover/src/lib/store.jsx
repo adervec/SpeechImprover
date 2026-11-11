@@ -194,6 +194,11 @@ export function StoreProvider({ children }) {
     persistProgram(null);
   }, []);
 
+  // Put back an earlier program exactly as it was (cowork undo).
+  const restoreProgram = useCallback((prog) => {
+    persistProgram(prog || null);
+  }, []);
+
   // ---- projects (named containers for recordings, e.g. reading a whole book) ----
   const createProject = useCallback((data = {}) => {
     const p = {
@@ -397,6 +402,7 @@ export function StoreProvider({ children }) {
       startProgram,
       completeProgramStep,
       clearProgram,
+      restoreProgram,
       createProject,
       updateProject,
       deleteProject,
@@ -415,7 +421,7 @@ export function StoreProvider({ children }) {
     }),
     [
       loading, storageError, sessions, profile, settings, program, masteryProgress, projects,
-      updateProfile, updateSettings, startProgram, completeProgramStep, clearProgram,
+      updateProfile, updateSettings, startProgram, completeProgramStep, clearProgram, restoreProgram,
       createProject, updateProject, deleteProject,
       recordTechniqueResult, resetMastery, addSession,
       updateSession, removeSession, restoreSession, purgeAudio, purgeAllAudio,
