@@ -319,6 +319,7 @@ export default function Practice({ route, navigate }) {
         recognitionConfidence: rec.confidence,
         recognitionSupported: recorder.recognitionSupported,
         profile,
+        paceMarks: rec.paceMarks || [],
       });
       const base = {
         type: activeExercise.type || activeExercise.mode,

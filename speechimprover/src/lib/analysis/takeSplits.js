@@ -27,6 +27,9 @@ function at(marks, t) {
   return acc;
 }
 
+// Words spoken by time t (interpolated within a segment).
+export const wordsAt = (marks, t) => at(marks || [], t).words;
+
 export function scoreGrade(score) {
   if (score >= 85) return 'A';
   if (score >= 70) return 'B';

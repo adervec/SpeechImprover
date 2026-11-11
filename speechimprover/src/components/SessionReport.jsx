@@ -8,6 +8,8 @@ import { AttributeBars } from './ui.jsx';
 import AnnotatedTranscript from './AnnotatedTranscript.jsx';
 import ImprovedVoicePreview from './ImprovedVoicePreview.jsx';
 import RecordingAudio from './RecordingAudio.jsx';
+import TakeSplitsCard from './TakeSplitsCard.jsx';
+import { useStore } from '../lib/store.jsx';
 import { ATTRIBUTES, REFERENCE_PROFILES, coachingCues } from '../lib/analysis/attributes.js';
 import { formatDuration } from '../lib/format.js';
 
@@ -177,7 +179,17 @@ function TechniqueReport({ session, audioUrl }) {
   );
 }
 
+// The take this one is compared with: your previous scored take on the same
+// exercise (the same baseline as the debrief's "vs last time").
+function previousTake(sessions, session) {
+  return sessions
+    .filter((s) => s.id !== session.id && s.exerciseId === session.exerciseId && s.scores && s.createdAt < session.createdAt)
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))[0] || null;
+}
+
 export default function SessionReport({ session, audioUrl, onSelectAttr, focusAttrs = [] }) {
+  const { sessions } = useStore();
+  const prev = previousTake(sessions, session);
   if (session.assessment === 'completion') {
     return <CompletionReport session={session} audioUrl={audioUrl} />;
   }
@@ -223,8 +235,13 @@ export default function SessionReport({ session, audioUrl, onSelectAttr, focusAt
 
       <div className="grid cols-2">
         <div className="card">
-          <div className="card-head"><h3>Attribute scores</h3><span className="tiny muted">click for detail</span></div>
-          <AttributeBars scores={scores} onSelect={onSelectAttr} highlight={focusAttrs} />
+          <div className="card-head">
+            <h3>Attribute scores</h3>
+            <span className="tiny muted" title={prev ? `▲/▼ = change since your take on ${new Date(prev.createdAt).toLocaleDateString()}` : undefined}>
+              {prev ? `▲▼ vs last take on this exercise (${new Date(prev.createdAt).toLocaleDateString()})` : 'first take on this exercise'} · click for detail
+            </span>
+          </div>
+          <AttributeBars scores={scores} compareScores={prev?.scores} onSelect={onSelectAttr} highlight={focusAttrs} />
         </div>
         <div className="card">
           <div className="card-head"><h3>Pattern map</h3></div>
@@ -238,6 +255,8 @@ export default function SessionReport({ session, audioUrl, onSelectAttr, focusAt
           </div>
         </div>
       </div>
+
+      <TakeSplitsCard session={session} />
 
       <div className="card">
         <div className="card-head"><h3>Transcript — what went well &amp; what to fix</h3></div>

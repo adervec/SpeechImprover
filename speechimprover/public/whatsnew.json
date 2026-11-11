@@ -1,5 +1,12 @@
 [
   {
+    "date": "2026-11-11",
+    "items": [
+      "Every attribute score now shows ▲/▼ against your last take on the same exercise.",
+      "The halves / thirds / quarters table now scores every attribute in each part — not just pace — with the change from the first part to the last, so you can see what held up and what faded."
+    ]
+  },
+  {
     "date": "2026-11-10",
     "items": [
       "Cowork Sync: replies from your AI coach now wait for you to review them (tick which exercises to keep) before anything changes, can be undone from the run history, and each channel can run on a schedule.",

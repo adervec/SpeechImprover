@@ -6,6 +6,7 @@
 // measurements. The UI labels them as estimates.
 
 import { fft, nextPow2 } from './fft.js';
+import { splitsFor } from './takeSplits.js';
 
 export const MIN_F0 = 70; // Hz
 export const MAX_F0 = 400; // Hz
@@ -164,6 +165,25 @@ export function analyzeAudioBuffer(audioBuffer) {
     f.speech = f.rms > rmsGate; // voiced or voiceless consonant energy
   }
 
+  const frameDur = hop / sr;
+  const metrics = summarizeFrames(frames, frameDur, totalSec);
+  // Halves / thirds / quarters: the same summary over each slice of the take
+  // (voicing gate stays global, so a quiet part reads as quiet, not re-normalised).
+  const audioParts = {};
+  for (const n of splitsFor(totalSec)) {
+    audioParts[n] = [];
+    for (let k = 0; k < n; k += 1) {
+      const from = (totalSec * k) / n;
+      const to = (totalSec * (k + 1)) / n;
+      const slice = frames.filter((f) => f.t >= from && f.t < to);
+      audioParts[n].push(slice.length ? summarizeFrames(slice, frameDur, to - from) : emptyMetrics(to - from));
+    }
+  }
+  return { ...metrics, audioParts };
+}
+
+// Every audio metric over a run of (already voicing-gated) frames.
+function summarizeFrames(frames, frameDur, totalSec) {
   const voiced = frames.filter((f) => f.voiced);
   const f0s = voiced.map((f) => f.f0);
   const medianF0 = median(f0s);
@@ -175,7 +195,6 @@ export function analyzeAudioBuffer(audioBuffer) {
   const f0StdSemitones = stddev(semis);
 
   // --- Segment into utterances separated by pauses ---
-  const frameDur = hop / sr;
   const pauseFrames = Math.max(1, Math.round(0.22 / frameDur)); // >=220ms = pause
   const utterances = [];
   let cur = null;
@@ -237,7 +256,7 @@ export function analyzeAudioBuffer(audioBuffer) {
     medianF0Hz: medianF0,
     f0StdSemitones,
     meanRms: mean(spVoiced.map((f) => f.rms)),
-    peakRms: maxRms,
+    peakRms: frames.reduce((m, f) => Math.max(m, f.rms), 0),
     voicedRatio: voiced.length / frames.length,
     terminalSlope: terminalSlopes.length ? mean(terminalSlopes) : 0,
     trailingRatio: trailingRatios.length ? mean(trailingRatios) : 1,

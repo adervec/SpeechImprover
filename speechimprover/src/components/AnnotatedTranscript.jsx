@@ -10,7 +10,6 @@ import {
 } from '../lib/analysis/transcriptAnnotate.js';
 import { paceTimeline } from '../lib/analysis/speechMetrics.js';
 import { PaceChart } from './charts.jsx';
-import { splitTake, splitsFor } from '../lib/analysis/takeSplits.js';
 
 function StatChip({ label, value, tone }) {
   return (
@@ -96,7 +95,6 @@ export default function AnnotatedTranscript({ session }) {
             </span>
           </div>
           <PaceChart points={pace.points} />
-          <TakeSplits marks={paceMarks} secs={durationSec} />
         </div>
       )}
 
@@ -116,41 +114,6 @@ export default function AnnotatedTranscript({ session }) {
         {level === 'detailed' && 'Fillers, repeats, and (when reading) misread or skipped words are marked. Hover a word for details.'}
         {level === 'granular' && 'Every word is marked, including on-target words. Hover any word for the specifics.'}
       </p>
-    </div>
-  );
-}
-
-// Longer takes: the same take cut into halves / thirds / quarters — each part's
-// pace, fillers and pace grade — plus how well the pace held first → last.
-// Ported from TachyRead's typing-run splits.
-const SPLIT_NAME = { 2: 'Halves', 3: 'Thirds', 4: 'Quarters' };
-function TakeSplits({ marks, secs }) {
-  const options = splitsFor(secs || 0);
-  const [n, setN] = useState(options[0] || 2);
-  const k = options.includes(n) ? n : options[0];
-  const sp = k ? splitTake(marks, secs, k) : null;
-  if (!sp) return null;
-  return (
-    <div className="take-splits">
-      <div className="row wrap" style={{ gap: 6, alignItems: 'center', margin: '10px 0 6px' }}>
-        <div className="pill-group">
-          {options.map((o) => (
-            <button key={o} type="button" className={`pill ${o === k ? 'active' : ''}`} aria-pressed={o === k} onClick={() => setN(o)}>{SPLIT_NAME[o]}</button>
-          ))}
-        </div>
-        <span className={`small g-${sp.diffGrade}`} style={{ marginLeft: 'auto' }}
-          title="Pace held: last part's pace against the first's. Within 5% either way is an A; rushing or flagging both cost grades.">
-          Pace held <b>{sp.diffGrade}</b> ({sp.diffPct > 0 ? '+' : ''}{sp.diffPct}%)
-        </span>
-      </div>
-      <table className="take-splits-table">
-        <thead><tr><th>Part</th><th>Pace</th><th>Fillers</th><th>Pace score</th><th>Grade</th></tr></thead>
-        <tbody>
-          {sp.parts.map((p, i) => (
-            <tr key={i}><td>{i + 1}</td><td>{p.wpm} wpm</td><td>{p.fillers}</td><td>{p.score}</td><td className={`g-${p.grade}`}>{p.grade}</td></tr>
-          ))}
-        </tbody>
-      </table>
     </div>
   );
 }
