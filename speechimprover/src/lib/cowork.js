@@ -13,6 +13,7 @@
 import { buildProgressSummary } from './progressSummary.js';
 import { attributeAverages } from './aggregate.js';
 import { EXERCISES, getExercise } from './exercises.js';
+import { scoreParts } from './analysis/index.js';
 
 // djb2 (hex) — identical to the hash the rest of the cowork ecosystem declares so
 // agents can echo requestHash back verbatim (CoworkSyncHub idempotency/correlation).
@@ -52,6 +53,8 @@ export function buildManifest() {
     channels: [
       { name: 'coach', request: ['coach/request.json'], instructions: 'coach/INSTRUCTIONS.md', replyPath: 'coach/reply.json' },
       { name: 'program', request: ['program/request.json'], instructions: 'program/INSTRUCTIONS.md', replyPath: 'program/reply.json' },
+      // house standard 18: an AI grade of each scored take, kept BESIDE the app's own score
+      { name: 'speech-review', request: ['speech-review/request.json'], instructions: 'speech-review/INSTRUCTIONS.md', replyPath: 'speech-review/reply.json' },
     ],
   };
 }
@@ -122,6 +125,137 @@ If you cannot do this, write \`program/reply-error.json\` instead:
 The speaker reviews the program (and can untick exercises) before it starts.
 `;
 
+// ---- speech-review channel (house standard 18) ----
+// Scored takes not yet reviewed by the AI (newest first), each with the raw detail
+// needed to grade it plus the app's own score, its breakdown and its part-by-part
+// trajectory; and recent history for trend.
+const KEY_METRICS = ['wpm', 'fillersPerMin', 'fillerTotal', 'typeTokenRatio', 'medianF0Hz', 'f0StdSemitones',
+  'terminalSlope', 'trailingRatio', 'meanRms', 'silenceRatio', 'pauseCount', 'meanPauseSec', 'nasalIndex', 'recognitionConfidence'];
+const round2 = (v) => (typeof v === 'number' ? Math.round(v * 100) / 100 : v);
+
+export function sessionsToReview(sessions, limit = 10) {
+  return sessions.filter((s) => s.assessment === 'full' && s.overall != null && !s.aiReview).slice(0, limit);
+}
+
+export function buildReviewDataset(sessions, profile, limit = 10) {
+  const toReview = sessionsToReview(sessions, limit).map((s) => {
+    const m = s.metrics || {};
+    const scoredParts = m.parts ? scoreParts(m.parts, profile) : null;
+    const k = scoredParts ? Math.max(...Object.keys(scoredParts).map(Number)) : 0;
+    return {
+      sessionId: s.id,
+      at: s.createdAt,
+      exercise: s.exerciseTitle || s.mode,
+      mode: s.mode,
+      durationSec: Math.round(s.durationSec || m.durationSec || 0),
+      prompt: (s.prompt || '').slice(0, 600),
+      transcript: (s.transcript || '').slice(0, 2500),
+      appScore: { overall: s.overall, alignment: s.distances?.alignment ?? null, attributes: s.scores },
+      targetAttributes: s.targetAttributes || [],
+      metrics: Object.fromEntries(KEY_METRICS.filter((key) => m[key] != null).map((key) => [key, round2(m[key])])),
+      // how each attribute moved through the take (finest split available)
+      parts: k ? scoredParts[k].map((pt, i) => ({ part: i + 1, of: k, overall: pt.overall, attributes: pt.scores })) : null,
+      speakerNote: s.notes || '',
+    };
+  });
+  const history = sessions.filter((s) => s.overall != null).slice(0, 30)
+    .map((s) => ({ at: s.createdAt, exercise: s.exerciseTitle || s.mode, overall: s.overall }));
+  return { app: 'SpeechImprover', speaker: { nativeLanguage: profile?.nativeLanguage || '', gender: profile?.gender || '' }, sessions: toReview, history };
+}
+export function buildReviewRequest(dataset) {
+  return envelope('speechimprover-speech-review', 'speech-review-request', dataset);
+}
+
+export const REVIEW_INSTRUCTIONS = `# SpeechImprover — Speech review channel
+
+Grade each speaking session in \`speech-review/request.json\` (a
+\`speechimprover-speech-review\` envelope; data in \`payload\`) more deeply than the
+app's own algorithm can. Each entry in \`payload.sessions\` is one take: the prompt
+(for reads, the passage), the transcript (from the browser's recogniser, so it may
+mis-hear words), the app's own scores (\`appScore\`, 0-100 per attribute), the raw
+measurements (\`metrics\`: wpm, fillersPerMin, f0StdSemitones = pitch variation in
+semitones, terminalSlope = end-of-phrase pitch in st/s (positive = uptalk),
+trailingRatio = energy kept to phrase ends, silenceRatio, ...) and \`parts\`, how each
+attribute moved from the start of the take to the end. \`payload.history\` gives the
+trend. You only see text and numbers, never audio: say so if a judgement needs audio.
+
+## Rubric (grade A-F per session)
+
+- **Content and structure** (free speech): a clear point, an order a listener can
+  follow, an ending that lands. For reads: fidelity to the passage (misread or
+  skipped words in the transcript).
+- **Delivery**: pace in a listenable band (~110-150 wpm), fillers replaced by
+  pauses, pitch variation that carries meaning, statements that fall rather than
+  rise, energy held to the end of phrases.
+- **Stamina**: did the delivery hold up across \`parts\`, or fade?
+- **Against their own trend**: better or worse than recent sessions in \`history\`?
+
+A = would hold a room as is; B = good with one clear fix; C = understandable but
+several habits get in the way; D = hard to follow; F = not a usable take.
+
+## Reply
+
+Write \`speech-review/reply.json\`:
+
+\`\`\`json
+{
+  "requestHash": "<copy the request's requestHash verbatim>",
+  "reviews": [
+    {
+      "sessionId": "<from payload.sessions>",
+      "grade": "B",
+      "summary": "2-3 sentences: how the take went and why that grade",
+      "strengths": ["specific, quoting the transcript where useful"],
+      "fixes": ["the 1-3 changes that would most improve it"],
+      "next": "one concrete thing to practise in the next take"
+    }
+  ]
+}
+\`\`\`
+
+One review per session in \`payload.sessions\`; only use those sessionIds. Be
+specific and kind; keep each review under ~120 words. The speaker reviews every
+grade before it is saved, and it is stored next to the app's own score, never
+replacing it. If you cannot do this, write \`speech-review/reply-error.json\`:
+\`{ "requestHash": "<copy verbatim>", "reason": "one line on why" }\`.
+`;
+
+const GRADES = new Set(['A', 'B', 'C', 'D', 'F']);
+// Valid reviews for sessions we know, as they will be stored.
+export function reviewsFromReply(reply, sessions) {
+  const r = parseReplyObject(reply);
+  const known = new Map(sessions.map((s) => [s.id, s]));
+  const list = Array.isArray(r.reviews) ? r.reviews : [];
+  const out = [];
+  const seen = new Set();
+  for (const v of list) {
+    if (!v || !known.has(v.sessionId) || seen.has(v.sessionId)) continue;
+    seen.add(v.sessionId);
+    const grade = String(v.grade || '').trim().toUpperCase().charAt(0);
+    out.push({
+      sessionId: v.sessionId,
+      grade: GRADES.has(grade) ? grade : '?',
+      summary: String(v.summary || '').slice(0, 1200),
+      strengths: (Array.isArray(v.strengths) ? v.strengths : []).map(String).slice(0, 6),
+      fixes: (Array.isArray(v.fixes) ? v.fixes : []).map(String).slice(0, 6),
+      next: String(v.next || '').slice(0, 400),
+    });
+  }
+  return out;
+}
+// Review rows: one per session.
+export function reviewPreview(reply, sessions) {
+  const byId = new Map(sessions.map((s) => [s.id, s]));
+  return reviewsFromReply(reply, sessions).map((v) => {
+    const s = byId.get(v.sessionId);
+    return {
+      id: v.sessionId,
+      label: `${s.exerciseTitle || s.mode} · ${new Date(s.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })} — AI grade ${v.grade} (app score ${s.overall})`,
+      detail: v.summary,
+    };
+  });
+}
+
 // The exact files the app drops into the folder for one push.
 export function buildRequestFiles(dataset) {
   return [
@@ -130,6 +264,13 @@ export function buildRequestFiles(dataset) {
     { path: 'coach/request.json', text: JSON.stringify(buildCoachRequest(dataset), null, 2) },
     { path: 'program/INSTRUCTIONS.md', text: PROGRAM_INSTRUCTIONS },
     { path: 'program/request.json', text: JSON.stringify(buildProgramRequest(dataset), null, 2) },
+  ];
+}
+// Manual flow: the speech-review request on its own.
+export function buildReviewFiles(sessions, profile) {
+  return [
+    { path: 'speech-review/INSTRUCTIONS.md', text: REVIEW_INSTRUCTIONS },
+    { path: 'speech-review/request.json', text: JSON.stringify(buildReviewRequest(buildReviewDataset(sessions, profile)), null, 2) },
   ];
 }
 
@@ -228,5 +369,21 @@ export function demo() {
   ok(programStepsFromAccepted(prog, null).length === 3, 'review off → everything');
   ok(coachPreview({ analysis: 'Good pace', focusAreas: [{ attribute: 'Expressiveness' }] })[0].detail.includes('Expressiveness'), 'coach row shows focus');
   ok(coachRecord({ payload: { analysis: 'wrapped' } }).analysis === 'wrapped', 'envelope reply unwrapped');
+  // speech-review (house standard 18)
+  const takes = [
+    { id: 'a', createdAt: '2026-11-12T10:00:00Z', assessment: 'full', overall: 70, scores: { pace: 80 }, exerciseTitle: 'Free', transcript: 'hi', metrics: { wpm: 130.456 } },
+    { id: 'b', createdAt: '2026-11-11T10:00:00Z', assessment: 'full', overall: 60, scores: {}, aiReview: { grade: 'B' } },
+    { id: 'c', createdAt: '2026-11-10T10:00:00Z', assessment: 'completion', overall: null },
+  ];
+  const rd = buildReviewDataset(takes, {});
+  ok(rd.sessions.length === 1 && rd.sessions[0].sessionId === 'a', 'only scored, not-yet-reviewed takes are sent');
+  ok(rd.sessions[0].appScore.overall === 70 && rd.sessions[0].metrics.wpm === 130.46, "the app's own score and metrics ride along");
+  ok(rd.history.length === 2, 'history carries the trend');
+  ok(buildManifest().channels.some((c) => c.name === 'speech-review'), 'manifest declares speech-review');
+  const rv = { requestHash: 'h', reviews: [{ sessionId: 'a', grade: 'b+', summary: 'ok', strengths: ['x'], fixes: ['y'], next: 'z' }, { sessionId: 'ghost', grade: 'A' }, { sessionId: 'a', grade: 'F' }] };
+  const got = reviewsFromReply(rv, takes);
+  ok(got.length === 1 && got[0].grade === 'B', 'unknown and duplicate sessions dropped; grade normalised');
+  const row = reviewPreview(rv, takes)[0];
+  ok(row.id === 'a' && row.label.includes('AI grade B (app score 70)'), 'one review row per session, beside the app score');
   return ds;
 }

@@ -10,11 +10,12 @@ import { useToast } from '../components/ui.jsx';
 import { formatDateTime } from '../lib/format.js';
 import {
   buildCoworkDataset, buildRequestFiles, parseReply, coachRecord, programStepsFromAccepted,
+  buildReviewFiles, reviewsFromReply,
 } from '../lib/cowork.js';
 import { useCoworkPanel, applyCoachRecord } from '../lib/coworkEngine.jsx';
 
 export default function Cowork({ navigate }) {
-  const { sessions, profile, startProgram } = useStore();
+  const { sessions, profile, startProgram, updateSession } = useStore();
   const toast = useToast();
   const hostRef = useRef(null);
   const [ready, coach] = useCoworkPanel(hostRef);
@@ -25,7 +26,7 @@ export default function Cowork({ navigate }) {
   const canRun = sessions.length > 0;
 
   function downloadRequest(channel) {
-    const f = buildRequestFiles(dataset).find((x) => x.path === `${channel}/request.json`);
+    const f = [...buildRequestFiles(dataset), ...buildReviewFiles(sessions, profile)].find((x) => x.path === `${channel}/request.json`);
     const url = URL.createObjectURL(new Blob([f.text], { type: 'application/json' }));
     const a = document.createElement('a');
     a.href = url; a.download = `speechimprover-${channel}-request.json`; a.click();
@@ -37,7 +38,12 @@ export default function Cowork({ navigate }) {
     setMsg('');
     let reply;
     try { reply = parseReply(pasted); } catch { setMsg('That is not valid JSON.'); return; }
-    if (pasteChannel === 'coach') {
+    if (pasteChannel === 'speech-review') {
+      const reviews = reviewsFromReply(reply, sessions);
+      if (!reviews.length) { setMsg('No reviews for sessions I recognise in that reply.'); return; }
+      for (const { sessionId, ...review } of reviews) updateSession(sessionId, { aiReview: { ...review, at: new Date().toISOString() } });
+      toast(`${reviews.length} AI review(s) saved beside your scores.`, { type: 'success' });
+    } else if (pasteChannel === 'coach') {
       applyCoachRecord(coachRecord(reply));
       toast('Coach feedback imported.', { type: 'success' });
     } else {
@@ -57,7 +63,7 @@ export default function Cowork({ navigate }) {
         <p className="muted small" style={{ margin: 0 }}>
           Hand your recent practice to an AI agent through a shared folder. SpeechImprover writes a
           <b> cowork.json</b> manifest plus two channels — <b>coach</b> (feedback) and <b>program</b> (a targeted
-          daily plan). <a href="https://github.com/adervec/CoworkSyncHub" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>CoworkSyncHub</a> (or
+          daily plan) — plus <b>speech-review</b>, an AI grade of each scored take kept beside the app's own score. <a href="https://github.com/adervec/CoworkSyncHub" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>CoworkSyncHub</a> (or
           any agent pointed at the folder) writes replies back. <b>Every reply waits for your review</b> before it
           changes anything — untick “review first” on a channel to apply its replies automatically. Applied replies
           can be undone from the run history. Everything stays on your device.
@@ -113,9 +119,10 @@ export default function Cowork({ navigate }) {
         <div className="row wrap" style={{ gap: 8, marginBottom: 10 }}>
           <button className="btn ghost sm" disabled={!canRun} onClick={() => downloadRequest('coach')}>⬇ coach request</button>
           <button className="btn ghost sm" disabled={!canRun} onClick={() => downloadRequest('program')}>⬇ program request</button>
+          <button className="btn ghost sm" disabled={!canRun} onClick={() => downloadRequest('speech-review')}>⬇ speech-review request</button>
         </div>
         <div className="pill-group" style={{ marginBottom: 8 }}>
-          {['coach', 'program'].map((c) => (
+          {['coach', 'program', 'speech-review'].map((c) => (
             <button key={c} className={`pill ${pasteChannel === c ? 'active' : ''}`} onClick={() => setPasteChannel(c)}>{c} reply</button>
           ))}
         </div>

@@ -15,6 +15,7 @@ import {
   buildManifest, buildCoworkDataset, buildCoachRequest, buildProgramRequest,
   COACH_INSTRUCTIONS, PROGRAM_INSTRUCTIONS, coachPreview, coachRecord, programPreview,
   programStepsFromAccepted, loadCoworkState, saveCoworkState,
+  REVIEW_INSTRUCTIONS, buildReviewDataset, buildReviewRequest, reviewPreview, reviewsFromReply, sessionsToReview,
 } from './cowork.js';
 
 export const COWORK_APP = 'speechimprover';
@@ -43,6 +44,7 @@ export function CoworkEngine() {
   const store = useStore();
   const live = useRef(store);
   useEffect(() => { live.current = store; });
+  useEffect(() => { CoworkEngine.live = live; }, []);
 
   useEffect(() => {
     // cowork.js is a deferred script after the app module, so it may land a moment later.
@@ -66,9 +68,14 @@ function mountEngine(live) {
     panel = window.cowork.mount(holder, {
       app: COWORK_APP,
       manifest: buildManifest(),
-      files: (ch) => (ch === 'coach'
-        ? { 'coach/INSTRUCTIONS.md': COACH_INSTRUCTIONS, 'coach/request.json': buildCoachRequest(dataset()) }
-        : { 'program/INSTRUCTIONS.md': PROGRAM_INSTRUCTIONS, 'program/request.json': buildProgramRequest(dataset()) }),
+      files: (ch) => {
+        if (ch === 'coach') return { 'coach/INSTRUCTIONS.md': COACH_INSTRUCTIONS, 'coach/request.json': buildCoachRequest(dataset()) };
+        if (ch === 'program') return { 'program/INSTRUCTIONS.md': PROGRAM_INSTRUCTIONS, 'program/request.json': buildProgramRequest(dataset()) };
+        return {
+          'speech-review/INSTRUCTIONS.md': REVIEW_INSTRUCTIONS,
+          'speech-review/request.json': buildReviewRequest(buildReviewDataset(live.current.sessions, live.current.profile)),
+        };
+      },
       channels: {
         coach: {
           label: 'Coach feedback',
@@ -98,6 +105,27 @@ function mountEngine(live) {
           },
           undo: (data) => live.current.restoreProgram(data?.prev || null),
         },
+        // house standard 18: an AI grade per scored take, stored BESIDE the app's score
+        'speech-review': {
+          label: 'Speech review (AI grade)',
+          schedule: 'daily',
+          review: true,
+          preview: (reply) => reviewPreview(reply, live.current.sessions),
+          apply: async (reply, accepted) => {
+            const keep = accepted ? new Set(accepted) : null;
+            const reviews = reviewsFromReply(reply, live.current.sessions).filter((v) => !keep || keep.has(v.sessionId));
+            const undo = [];
+            for (const { sessionId, ...review } of reviews) {
+              const prev = live.current.sessions.find((s) => s.id === sessionId)?.aiReview || null;
+              await live.current.updateSession(sessionId, { aiReview: { ...review, at: new Date().toISOString() } });
+              undo.push({ sessionId, prev });
+            }
+            return { summary: `${reviews.length} take(s) graded by AI`, undo };
+          },
+          undo: async (list) => {
+            for (const { sessionId, prev } of list || []) await live.current.updateSession(sessionId, { aiReview: prev });
+          },
+        },
       },
     });
 }
@@ -119,6 +147,18 @@ export function useCoworkPanel(hostRef) {
     return () => { listeners.delete(sync); clearInterval(t); if (panel) park(); };
   }, [hostRef]);
   return [ready, coach];
+}
+
+// After a take is saved: send the speech-review request now (house standard 18,
+// "when a session ends"), if a folder is connected and something awaits review.
+// Deferred so the store has re-rendered with the new session first.
+export function requestSpeechReview() {
+  setTimeout(() => {
+    if (!panel) return;
+    const { sessions } = CoworkEngine.live?.current || {};
+    if (sessions && !sessionsToReview(sessions).length) return;
+    panel.push('speech-review', true); // a no-op when no folder is connected
+  }, 1500);
 }
 
 // Manual flow (no folder): apply a pasted reply directly — the speaker already chose it.

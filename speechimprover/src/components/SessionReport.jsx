@@ -179,6 +179,33 @@ function TechniqueReport({ session, audioUrl }) {
   );
 }
 
+// The AI's grade of this take (cowork speech-review), shown BESIDE the app's own
+// score — it never replaces it. Undo lives in the Cowork run history.
+function AiReviewCard({ review, appScore }) {
+  const tone = { A: 'good', B: 'good', C: 'warn', D: 'bad', F: 'bad' }[review.grade] || 'text-dim';
+  return (
+    <div className="card" style={{ borderLeft: `4px solid var(--${tone})` }}>
+      <div className="card-head">
+        <h3>🤖 AI review</h3>
+        <span className="tiny muted">
+          grade <b style={{ color: `var(--${tone})`, fontSize: '1.1rem' }}>{review.grade}</b> · app score {appScore}
+          {review.at ? ` · ${new Date(review.at).toLocaleDateString()}` : ''}
+        </span>
+      </div>
+      {review.summary && <p className="small" style={{ marginTop: 0 }}>{review.summary}</p>}
+      <div className="grid cols-2" style={{ gap: 12 }}>
+        {review.strengths?.length > 0 && (
+          <div><b className="small">✅ Strengths</b><ul className="small" style={{ margin: '4px 0', paddingLeft: 18 }}>{review.strengths.map((t, i) => <li key={i}>{t}</li>)}</ul></div>
+        )}
+        {review.fixes?.length > 0 && (
+          <div><b className="small">🎯 Fixes</b><ul className="small" style={{ margin: '4px 0', paddingLeft: 18 }}>{review.fixes.map((t, i) => <li key={i}>{t}</li>)}</ul></div>
+        )}
+      </div>
+      {review.next && <p className="small" style={{ marginBottom: 0 }}><b>Next take:</b> {review.next}</p>}
+    </div>
+  );
+}
+
 // The take this one is compared with: your previous scored take on the same
 // exercise (the same baseline as the debrief's "vs last time").
 function previousTake(sessions, session) {
@@ -230,6 +257,8 @@ export default function SessionReport({ session, audioUrl, onSelectAttr, focusAt
           <MetricRow label="Words / fillers" value={`${m.wordCount ?? 0} / ${m.fillerTotal ?? 0}`} />
         </div>
       </div>
+
+      {session.aiReview && <AiReviewCard review={session.aiReview} appScore={overall} />}
 
       <CueCard scores={scores} metrics={m} focusAttrs={focusAttrs} onSelectAttr={onSelectAttr} />
 

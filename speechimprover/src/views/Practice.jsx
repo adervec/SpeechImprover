@@ -29,6 +29,7 @@ import {
 } from '../lib/exercises.js';
 import { weakestAttributes, computeStreak, groupIntoSessions } from '../lib/aggregate.js';
 import { annotateTranscript } from '../lib/analysis/transcriptAnnotate.js';
+import { requestSpeechReview } from '../lib/coworkEngine.jsx';
 import { getTechniqueExercise, evaluateStage } from '../lib/vocalMastery.js';
 import { splitIntoPassages } from '../lib/passages.js';
 import { formatDuration } from '../lib/format.js';
@@ -391,6 +392,7 @@ export default function Practice({ route, navigate }) {
       setNotes('');
       setPhase('result');
       if (isNewBest) toast(`🎉 New personal best — ${analysis.overall}!`, { type: 'success' });
+      if (session.assessment === 'full') requestSpeechReview(); // AI grade request when a take ends
     } catch (e) {
       toast(`Analysis failed: ${e.message || e}`);
       setPhase('review'); // keep the take so they can retry or abandon
