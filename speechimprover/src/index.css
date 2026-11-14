@@ -99,7 +99,7 @@ h3 {
 }
 .sidebar {
   background: var(--bg-2);
-  border-right: 1px solid var(--border);
+  border-inline-end: 1px solid var(--border);
   padding: 22px 16px;
   display: flex;
   flex-direction: column;
@@ -150,7 +150,7 @@ h3 {
   /* rendered as <button> for keyboard access — reset native button chrome */
   background: none;
   width: 100%;
-  text-align: left;
+  text-align: start;
   font-family: inherit;
 }
 .nav-link:hover {
@@ -207,7 +207,7 @@ h3 {
   align-items: center;
   gap: 18px;
   flex-wrap: wrap;
-  margin-left: auto;
+  margin-inline-start: auto;
   font-size: 0.8rem;
 }
 .device-chip {
@@ -545,7 +545,7 @@ table.data {
   font-size: 0.86rem;
 }
 table.data th {
-  text-align: left;
+  text-align: start;
   color: var(--text-dim);
   font-size: 0.7rem;
   text-transform: uppercase;
@@ -627,7 +627,7 @@ table.data tr:hover td {
 .prompt-box {
   background: var(--bg-2);
   border: 1px solid var(--border);
-  border-left: 4px solid var(--accent);
+  border-inline-start: 4px solid var(--accent);
   border-radius: var(--radius-sm);
   padding: 16px 18px;
   font-size: 1.05rem;
@@ -692,7 +692,7 @@ table.data tr:hover td {
 .lf-chip.off { opacity: 0.45; }
 .lf-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; transition: background 0.3s ease; }
 .lf-label { font-weight: 600; }
-.lf-detail { margin-left: auto; font-variant-numeric: tabular-nums; font-size: 0.76rem; white-space: nowrap; }
+.lf-detail { margin-inline-start: auto; font-variant-numeric: tabular-nums; font-size: 0.76rem; white-space: nowrap; }
 
 .toast.error { border-color: var(--bad); }
 .toast.success { border-color: var(--good); }
@@ -736,7 +736,7 @@ table.data tr:hover td {
   .sidebar {
     position: fixed;
     top: 0;
-    left: 0;
+    inset-inline-start: 0;
     z-index: 60;
     width: 268px;
     max-width: 82vw;
@@ -747,6 +747,10 @@ table.data tr:hover td {
   }
   .sidebar.open {
     transform: translateX(0);
+  }
+  /* right-to-left languages (ar, fa, ur): the drawer slides in from the right */
+  [dir='rtl'] .sidebar:not(.open) {
+    transform: translateX(100%);
   }
   .nav-backdrop {
     display: block;

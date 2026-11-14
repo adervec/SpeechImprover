@@ -9,6 +9,7 @@ import CommandPalette from './components/CommandPalette.jsx';
 import { useRouter } from './hooks/useRouter.js';
 import { applyTheme } from './styles/themes.js';
 import { autoScanNarrations } from './lib/narrationWatch.js';
+import { t } from './lib/i18n.js';
 
 import Dashboard from './views/Dashboard.jsx';
 import Practice from './views/Practice.jsx';
@@ -27,24 +28,25 @@ import Profile from './views/Profile.jsx';
 import Settings from './views/Settings.jsx';
 import Help from './views/Help.jsx';
 
-const TITLES = {
-  '': 'Dashboard',
-  practice: 'Practice',
-  exercises: 'Exercises',
-  projects: 'Projects',
-  mastery: 'Vocal mastery',
-  voicelab: 'Voice lab',
-  trends: 'Trends',
-  history: 'Recordings & data',
-  coach: 'AI coach',
-  cowork: 'Cowork sync',
-  session: 'Recording detail',
-  compare: 'Compare recordings',
-  references: 'References',
-  profile: 'Profile',
-  settings: 'Settings',
-  help: 'Help & guide',
-};
+// Translated at render time (a function, not a constant).
+const titles = () => ({
+  '': t('Dashboard'),
+  practice: t('Practice'),
+  exercises: t('Exercises'),
+  projects: t('Projects'),
+  mastery: t('Vocal mastery'),
+  voicelab: t('Voice lab'),
+  trends: t('Trends'),
+  history: t('Recordings & data'),
+  coach: t('AI coach'),
+  cowork: t('Cowork sync'),
+  session: t('Recording detail'),
+  compare: t('Compare recordings'),
+  references: t('References'),
+  profile: t('Profile'),
+  settings: t('Settings'),
+  help: t('Help & guide'),
+});
 
 // One thrown view shouldn't white-screen the whole app. Reset on navigation via
 // a route-derived key (remount clears the caught error).
@@ -55,9 +57,9 @@ class ErrorBoundary extends Component {
     if (this.state.error) {
       return (
         <div className="card" style={{ borderColor: 'var(--bad)' }}>
-          <h3 style={{ color: 'var(--bad)', marginTop: 0 }}>This screen hit an error.</h3>
+          <h3 style={{ color: 'var(--bad)', marginTop: 0 }}>{t('This screen hit an error.')}</h3>
           <p className="muted small">{String(this.state.error?.message || this.state.error)}</p>
-          <button className="btn" onClick={() => window.location.reload()}>Reload app</button>
+          <button className="btn" onClick={() => window.location.reload()}>{t('Reload app')}</button>
         </div>
       );
     }
@@ -149,7 +151,7 @@ function Shell() {
 
   // Per-route tab title so history/bookmarks/multi-tab are distinguishable.
   useEffect(() => {
-    document.title = `${TITLES[route.page] ?? 'SpeechImprover'} · SpeechImprover`;
+    document.title = `${titles()[route.page] ?? 'SpeechImprover'} · SpeechImprover`;
   }, [route.page]);
 
   const showBack = route.page === 'session' || route.page === 'compare';
@@ -162,14 +164,14 @@ function Shell() {
         <Sidebar route={route} navigate={navigate} open={navOpen} onClose={() => setNavOpen(false)} />
         <div className="main">
           <header className="topbar">
-            <button className="nav-toggle" aria-label="Open menu" onClick={() => setNavOpen(true)}>☰</button>
+            <button className="nav-toggle" aria-label={t('Open menu')} onClick={() => setNavOpen(true)}>☰</button>
             {showBack && (
-              <button className="btn ghost sm" onClick={() => window.history.back()} aria-label="Go back">‹ Back</button>
+              <button className="btn ghost sm" onClick={() => window.history.back()} aria-label={t('Go back')}>‹ {t('Back')}</button>
             )}
-            <h1 style={{ fontSize: '1.15rem' }}>{TITLES[route.page] ?? 'SpeechImprover'}</h1>
-            <button className="btn ghost sm" onClick={() => setPaletteOpen(true)} title="Quick jump (Ctrl/⌘ K)" aria-label="Quick jump">🔎</button>
+            <h1 style={{ fontSize: '1.15rem' }}>{titles()[route.page] ?? 'SpeechImprover'}</h1>
+            <button className="btn ghost sm" onClick={() => setPaletteOpen(true)} title={t('Quick jump (Ctrl/⌘ K)')} aria-label={t('Quick jump')}>🔎</button>
             {installPrompt && (
-              <button className="btn ghost sm" title="Install as an app" onClick={async () => { installPrompt.prompt(); await installPrompt.userChoice; setInstallPrompt(null); }}>⤓ Install</button>
+              <button className="btn ghost sm" title={t('Install as an app')} onClick={async () => { installPrompt.prompt(); await installPrompt.userChoice; setInstallPrompt(null); }}>⤓ {t('Install')}</button>
             )}
             <DeviceBar />
             {/* house standard: the signed-in Google picture, always visible (font.js) */}
@@ -178,12 +180,12 @@ function Shell() {
           <main className="content">
             {storageError && (
               <div className="card" style={{ borderColor: 'var(--bad)', marginBottom: 18 }}>
-                <strong style={{ color: 'var(--bad)' }}>Storage unavailable.</strong>{' '}
-                <span className="muted">{storageError} — history and saving are disabled in this browser/mode.</span>
+                <strong style={{ color: 'var(--bad)' }}>{t('Storage unavailable.')}</strong>{' '}
+                <span className="muted">{t('{error} — history and saving are disabled in this browser/mode.', { error: storageError })}</span>
               </div>
             )}
             {loading ? (
-              <div className="empty">Loading your history…</div>
+              <div className="empty">{t('Loading your history…')}</div>
             ) : (
               <ErrorBoundary key={`${route.page}/${route.param}`}>
                 <View route={route} navigate={navigate} />

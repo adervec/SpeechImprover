@@ -1,22 +1,24 @@
 // Cmd/Ctrl-K quick-jump. Filter destinations, ↑/↓ to move, Enter to go.
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { t } from '../lib/i18n.js';
 
-const COMMANDS = [
-  { id: '', label: 'Dashboard', hint: 'Home & stats' },
-  { id: 'practice', label: 'Just speak', hint: 'Free speaking — start recording now', query: { quick: '1' } },
-  { id: 'practice', label: 'Practice', hint: 'Record a new session' },
-  { id: 'exercises', label: 'Exercises', hint: 'Drills & daily program' },
-  { id: 'projects', label: 'Projects', hint: 'Books & recording series' },
-  { id: 'mastery', label: 'Vocal mastery', hint: 'Advanced techniques' },
-  { id: 'voicelab', label: 'Voice lab', hint: 'Experiment with your voice' },
-  { id: 'trends', label: 'Trends', hint: 'Progress charts' },
-  { id: 'history', label: 'Recordings', hint: 'History & data' },
-  { id: 'coach', label: 'AI coach', hint: 'Feedback & summary' },
-  { id: 'cowork', label: 'Cowork sync', hint: 'AI folder handshake' },
-  { id: 'references', label: 'References', hint: 'Goals & targets' },
-  { id: 'profile', label: 'Profile', hint: 'About you' },
-  { id: 'settings', label: 'Settings', hint: 'Preferences & data' },
-  { id: 'help', label: 'Help & guide', hint: 'How it works' },
+// Translated at render time (a function, not a constant).
+const commands = () => [
+  { id: '', label: t('Dashboard'), hint: t('Home & stats') },
+  { id: 'practice', label: t('Just speak'), hint: t('Free speaking — start recording now'), query: { quick: '1' } },
+  { id: 'practice', label: t('Practice'), hint: t('Record a new session') },
+  { id: 'exercises', label: t('Exercises'), hint: t('Drills & daily program') },
+  { id: 'projects', label: t('Projects'), hint: t('Books & recording series') },
+  { id: 'mastery', label: t('Vocal mastery'), hint: t('Advanced techniques') },
+  { id: 'voicelab', label: t('Voice lab'), hint: t('Experiment with your voice') },
+  { id: 'trends', label: t('Trends'), hint: t('Progress charts') },
+  { id: 'history', label: t('Recordings'), hint: t('History & data') },
+  { id: 'coach', label: t('AI coach'), hint: t('Feedback & summary') },
+  { id: 'cowork', label: t('Cowork sync'), hint: t('AI folder handshake') },
+  { id: 'references', label: t('References'), hint: t('Goals & targets') },
+  { id: 'profile', label: t('Profile'), hint: t('About you') },
+  { id: 'settings', label: t('Settings'), hint: t('Preferences & data') },
+  { id: 'help', label: t('Help & guide'), hint: t('How it works') },
 ];
 
 export default function CommandPalette({ onClose, navigate }) {
@@ -26,8 +28,9 @@ export default function CommandPalette({ onClose, navigate }) {
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
-    if (!s) return COMMANDS;
-    return COMMANDS.filter((c) => c.label.toLowerCase().includes(s) || c.hint.toLowerCase().includes(s));
+    const all = commands();
+    if (!s) return all;
+    return all.filter((c) => c.label.toLowerCase().includes(s) || c.hint.toLowerCase().includes(s));
   }, [q]);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
@@ -48,12 +51,12 @@ export default function CommandPalette({ onClose, navigate }) {
           value={q}
           onChange={(e) => { setQ(e.target.value); setIdx(0); }}
           onKeyDown={onKey}
-          placeholder="Jump to…  (↑ ↓ then Enter)"
-          aria-label="Jump to a page"
+          placeholder={t('Jump to…  (↑ ↓ then Enter)')}
+          aria-label={t('Jump to a page')}
           style={{ width: '100%', border: 'none', borderRadius: 0, borderBottom: '1px solid var(--border)', fontSize: '1rem', padding: '14px 16px' }}
         />
         <div style={{ maxHeight: '46vh', overflowY: 'auto' }}>
-          {filtered.length === 0 && <div className="muted small" style={{ padding: 16 }}>No matches.</div>}
+          {filtered.length === 0 && <div className="muted small" style={{ padding: 16 }}>{t('No matches.')}</div>}
           {filtered.map((c, i) => (
             <button
               key={c.label}

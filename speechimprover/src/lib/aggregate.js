@@ -2,6 +2,7 @@
 
 import { ATTRIBUTES } from './analysis/attributes.js';
 import { localDayKey, parseDayKey } from './format.js';
+import { locale } from './i18n.js';
 
 // The user's LOCAL calendar day of a timestamp.
 const dayKey = (iso) => localDayKey(iso);
@@ -144,7 +145,8 @@ export function demoGroupSessions() {
 }
 
 // ---- GitHub-style contribution grid (practice activity heatmap) ----
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// Short month names in the reader's language (Intl), not a hand-typed English list.
+const monthName = (m) => new Date(2026, m, 1).toLocaleDateString(locale(), { month: 'short' });
 
 export function activityLevel(n) {
   if (!n) return 0;
@@ -184,7 +186,7 @@ export function buildActivityGrid(sessions, weeks = 53, today = new Date()) {
       const count = future ? 0 : counts[key] || 0;
       if (!future) total += count;
       if (r === 0 && d.getMonth() !== prevMonth) {
-        month = MONTHS[d.getMonth()];
+        month = monthName(d.getMonth());
         prevMonth = d.getMonth();
       }
       days.push({ key, count, level: activityLevel(count), future, isToday: key === todayKey });

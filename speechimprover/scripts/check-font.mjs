@@ -9,6 +9,10 @@ const css = readFileSync(new URL('../src/index.css', import.meta.url), 'utf8');
 const fontAt = html.indexOf('<script src="https://adervec.github.io/font.js"></script>');
 assert.ok(fontAt > 0 && fontAt < html.indexOf('</head>'), 'font.js loads in <head>, not deferred');
 assert.ok(fontAt < html.indexOf('/src/main.jsx'), 'font.js runs before the app styles');
+for (const m of ['app-locales', 'app-whatsnew']) {
+  const at = html.indexOf(`name="${m}"`);
+  assert.ok(at > 0 && at < fontAt, `<meta name="${m}"> must come before font.js (it reads it as it runs)`);
+}
 const body = css.match(/body\s*\{[^}]*font-family:\s*([^;]+);/)[1];
 assert.equal(body.trim(), 'var(--app-font, var(--sans))');
 assert.match(readFileSync(new URL('../src/views/Settings.jsx', import.meta.url), 'utf8'), /<app-font-picker/);

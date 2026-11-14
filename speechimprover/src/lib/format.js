@@ -1,9 +1,11 @@
 // Small formatting helpers shared across views.
 
+import { t, locale } from './i18n.js';
+
 export function formatDate(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
-  return d.toLocaleDateString(undefined, {
+  return d.toLocaleDateString(locale(), {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -13,7 +15,7 @@ export function formatDate(iso) {
 export function formatDateTime(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
-  return d.toLocaleString(undefined, {
+  return d.toLocaleString(locale(), {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
@@ -35,11 +37,11 @@ export function relativeDay(iso) {
   if (!iso) return '';
   // Whole local calendar days between then and today (not 24h blocks).
   const days = Math.round((parseDayKey(localDayKey()) - parseDayKey(localDayKey(iso))) / 86400000);
-  if (days <= 0) return 'today';
-  if (days === 1) return 'yesterday';
-  if (days < 7) return `${days} days ago`;
-  if (days < 30) return `${Math.round(days / 7)} wk ago`;
-  return `${Math.round(days / 30)} mo ago`;
+  if (days <= 0) return t('today');
+  if (days === 1) return t('yesterday');
+  if (days < 7) return t.n('{n} day ago', '{n} days ago', days);
+  if (days < 30) return t.n('{n} wk ago', '{n} wk ago', Math.round(days / 7));
+  return t.n('{n} mo ago', '{n} mo ago', Math.round(days / 30));
 }
 
 export function formatDuration(sec) {

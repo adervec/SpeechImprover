@@ -6,22 +6,24 @@ import { useRecorder } from '../lib/recorderContext.jsx';
 import { useStore } from '../lib/store.jsx';
 import { useMediaDevices } from '../hooks/useMediaDevices.js';
 import { formatDuration } from '../lib/format.js';
+import { t } from '../lib/i18n.js';
 
-const NAV = [
-  { id: '', label: 'Dashboard', icon: '◎' },
-  { id: 'practice', label: 'Practice', icon: '●' },
-  { id: 'exercises', label: 'Exercises', icon: '✦' },
-  { id: 'projects', label: 'Projects', icon: '📁' },
-  { id: 'mastery', label: 'Vocal mastery', icon: '🏆' },
-  { id: 'voicelab', label: 'Voice lab', icon: '🗣️' },
-  { id: 'trends', label: 'Trends', icon: '📈' },
-  { id: 'history', label: 'Recordings', icon: '🕘' },
-  { id: 'coach', label: 'AI coach', icon: '🤝' },
-  { id: 'cowork', label: 'Cowork sync', icon: '🔗' },
-  { id: 'references', label: 'References', icon: '🎯' },
-  { id: 'profile', label: 'Profile', icon: '👤' },
-  { id: 'settings', label: 'Settings', icon: '⚙️' },
-  { id: 'help', label: 'Help & guide', icon: '❔' },
+// A function, not a constant: labels are translated at render time.
+const nav = () => [
+  { id: '', label: t('Dashboard'), icon: '◎' },
+  { id: 'practice', label: t('Practice'), icon: '●' },
+  { id: 'exercises', label: t('Exercises'), icon: '✦' },
+  { id: 'projects', label: t('Projects'), icon: '📁' },
+  { id: 'mastery', label: t('Vocal mastery'), icon: '🏆' },
+  { id: 'voicelab', label: t('Voice lab'), icon: '🗣️' },
+  { id: 'trends', label: t('Trends'), icon: '📈' },
+  { id: 'history', label: t('Recordings'), icon: '🕘' },
+  { id: 'coach', label: t('AI coach'), icon: '🤝' },
+  { id: 'cowork', label: t('Cowork sync'), icon: '🔗' },
+  { id: 'references', label: t('References'), icon: '🎯' },
+  { id: 'profile', label: t('Profile'), icon: '👤' },
+  { id: 'settings', label: t('Settings'), icon: '⚙️' },
+  { id: 'help', label: t('Help & guide'), icon: '❔' },
 ];
 
 export function Sidebar({ route, navigate, open, onClose }) {
@@ -37,7 +39,7 @@ export function Sidebar({ route, navigate, open, onClose }) {
   }, [open, onClose]);
   return (
     <>
-      {open && <button className="nav-backdrop" aria-label="Close menu" onClick={onClose} />}
+      {open && <button className="nav-backdrop" aria-label={t('Close menu')} onClick={onClose} />}
       <nav className={`sidebar ${open ? 'open' : ''}`}>
       <div className="brand">
         <div className="brand-logo">
@@ -52,10 +54,10 @@ export function Sidebar({ route, navigate, open, onClose }) {
         </div>
         <div>
           <div className="brand-name">SpeechImprover</div>
-          <div className="brand-sub">English · v0</div>
+          <div className="brand-sub">{t('English speech')} · v0</div>
         </div>
       </div>
-      {NAV.map((n) => (
+      {nav().map((n) => (
         <button
           type="button"
           key={n.id}
@@ -69,11 +71,11 @@ export function Sidebar({ route, navigate, open, onClose }) {
       ))}
       <div className="nav-spacer" />
       <button type="button" className="nav-link primary-cta" onClick={() => go('practice', { query: { quick: '1' } })} style={{ color: 'var(--accent)' }}
-        title="Skip setup — free speaking starts after a 3-2-1">
-        <span className="ico">🎙️</span>Just speak
+        title={t('Skip setup — free speaking starts after a 3-2-1')}>
+        <span className="ico">🎙️</span>{t('Just speak')}
       </button>
       <button type="button" className="nav-link primary-cta" onClick={() => go('practice')} style={{ color: 'var(--accent)' }}>
-        <span className="ico">＋</span>New session
+        <span className="ico">＋</span>{t('New session')}
       </button>
       </nav>
     </>
@@ -83,7 +85,7 @@ export function Sidebar({ route, navigate, open, onClose }) {
 function MicLevelMeter() {
   const { level, isActive, isRecording } = useRecorder();
   return (
-    <div className="mic-meter" title="Microphone input level">
+    <div className="mic-meter" title={t('Microphone input level')}>
       <span className={`mic-dot ${isActive ? 'live' : ''}`} style={isRecording ? { background: 'var(--rec)' } : undefined} />
       <div className="mic-meter-track">
         <div className="mic-meter-fill" style={{ width: `${isActive ? Math.round(level * 100) : 0}%` }} />
@@ -100,8 +102,8 @@ export function DeviceBar() {
   const inDev = inputs.find((d) => d.deviceId === settings.inputDeviceId) || inputs[0];
   const outDev = outputs.find((d) => d.deviceId === settings.outputDeviceId) || outputs[0];
 
-  const inLabel = inDev?.label || (hasLabels ? 'Default mic' : 'Microphone (grant access)');
-  const outLabel = outDev?.label || 'System default output';
+  const inLabel = inDev?.label || (hasLabels ? t('Default mic') : t('Microphone (grant access)'));
+  const outLabel = outDev?.label || t('System default output');
 
   return (
     <div className="devicebar">
@@ -117,11 +119,11 @@ export function DeviceBar() {
           className={`btn sm ${isMonitoring ? '' : 'ghost'}`}
           onClick={() => (isMonitoring ? stopMonitor() : startMonitor(settings.inputDeviceId))}
         >
-          {isMonitoring ? 'Stop test' : 'Test mic'}
+          {isMonitoring ? t('Stop test') : t('Test mic')}
         </button>
       )}
       <span className="tiny muted nowrap">
-        {isRecording ? 'recording' : isActive ? 'monitoring' : 'idle'}
+        {isRecording ? t('recording') : isActive ? t('monitoring') : t('idle')}
       </span>
     </div>
   );
@@ -133,7 +135,7 @@ export function RecordingIndicator() {
   return (
     <div className="rec-banner">
       <span className="rec-dot" />
-      RECORDING — your microphone is live · {formatDuration(elapsedMs / 1000)}
+      {t('RECORDING — your microphone is live · {time}', { time: formatDuration(elapsedMs / 1000) })}
     </div>
   );
 }

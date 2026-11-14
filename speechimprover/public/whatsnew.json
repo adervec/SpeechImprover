@@ -1,5 +1,11 @@
 [
   {
+    "date": "2026-11-14",
+    "items": [
+      "SpeechImprover now speaks 16 more languages (French, Spanish, Portuguese, Italian, Croatian, German, Chinese, Ukrainian, Esperanto, Swahili, Hindi, Bengali, Indonesian, Urdu, Farsi and Arabic): pick one under Settings → Theme → Language. These are machine translations, and the menus, header and dashboard come first — more screens will follow."
+    ]
+  },
+  {
     "date": "2026-11-13",
     "items": [
       "AI speech review: through Cowork Sync, an AI coach can now grade each of your takes (A–F with strengths, fixes and what to try next). You review each grade before it's saved; it appears on the take beside the app's own score and can be undone.",
