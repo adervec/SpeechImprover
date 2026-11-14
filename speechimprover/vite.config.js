@@ -7,7 +7,12 @@ import plugin from '@vitejs/plugin-react';
 // Local dev/build and other hosts stay at the root ("/").
 export default defineConfig({
     base: process.env.GITHUB_PAGES ? '/SpeechImprover/' : '/',
-    plugins: [plugin()],
+    plugins: [
+        plugin(),
+        // The CSP meta (index.html) is for the built site; Vite's dev server injects an
+        // inline React-refresh script it would block, so drop the tag only when serving dev.
+        { name: 'dev-without-csp', apply: 'serve', transformIndexHtml: (html) => html.replace(/\s*<meta http-equiv="Content-Security-Policy"[^>]*>/, '') },
+    ],
     server: {
         port: 53134,
     }

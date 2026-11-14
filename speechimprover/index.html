@@ -2,6 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- House standard 22: every app shares adervec.github.io, so lock down what this page may load.
+         Scripts: this app, the house scripts, Google sign-in (Drive sync). Inline styles are React's style attributes.
+         The dev server drops this tag (vite.config.js) because Vite injects an inline refresh script there. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://adervec.github.io https://accounts.google.com; style-src 'self' 'unsafe-inline' https://adervec.github.io https://accounts.google.com; img-src 'self' data: blob: https://*.googleusercontent.com; font-src 'self' https://adervec.github.io; connect-src 'self' https://adervec.github.io https://www.googleapis.com https://accounts.google.com https://oauth2.googleapis.com; media-src 'self' blob:; worker-src 'self' blob:; frame-src 'self' https://accounts.google.com; manifest-src 'self'; form-action 'none'; base-uri 'none'; object-src 'none'" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.webmanifest" />
