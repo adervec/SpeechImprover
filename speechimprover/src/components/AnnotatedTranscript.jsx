@@ -84,7 +84,7 @@ export default function AnnotatedTranscript({ session }) {
         </div>
       </div>
 
-      <p className="transcript-body" style={{ lineHeight: 2 }}>{rendered}</p>
+      <p className="transcript-body" data-clamp="8" style={{ lineHeight: 2 }}>{rendered}</p>
 
       {pace && (
         <div style={{ marginTop: 14 }}>
