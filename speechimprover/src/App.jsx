@@ -1,4 +1,4 @@
-import { Component, useEffect, useState } from 'react';
+import { Component, createElement, useEffect, useState } from 'react';
 import { StoreProvider, useStore } from './lib/store.jsx';
 import { DriveSyncProvider } from './lib/driveSync.jsx';
 import { CoworkEngine } from './lib/coworkEngine.jsx';
@@ -172,6 +172,8 @@ function Shell() {
               <button className="btn ghost sm" title="Install as an app" onClick={async () => { installPrompt.prompt(); await installPrompt.userChoice; setInstallPrompt(null); }}>⤓ Install</button>
             )}
             <DeviceBar />
+            {/* house standard: the signed-in Google picture, always visible (font.js) */}
+            {createElement('app-account')}
           </header>
           <main className="content">
             {storageError && (

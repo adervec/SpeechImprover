@@ -311,7 +311,7 @@ export function DriveSyncProvider({ children }) {
         const token = await getToken({ interactive });
         if (!accountFetchedRef.current) {
           accountFetchedRef.current = true;
-          fetchAccount(token).then(setAccount);
+          fetchAccount(token).then((a) => { setAccount(a); window.appFont?.setAccount(a); }); // house standard: picture in the top bar
         }
         const remote = await readRemote();
         const local = await buildLocalDoc();
@@ -347,6 +347,7 @@ export function DriveSyncProvider({ children }) {
     tokenExpiry = 0;
     accountFetchedRef.current = false;
     setAccount(null);
+    window.appFont?.setAccount(null);
     setConnected(false);
     setStatus('idle');
     setError(null);
