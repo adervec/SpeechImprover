@@ -7,7 +7,7 @@ import { ToastProvider } from './components/ui.jsx';
 import { Sidebar, DeviceBar, RecordingIndicator } from './components/layout.jsx';
 import CommandPalette from './components/CommandPalette.jsx';
 import { useRouter } from './hooks/useRouter.js';
-import { applyTheme } from './styles/themes.js';
+import { migrateLegacyTheme } from './styles/themes.js';
 import { autoScanNarrations } from './lib/narrationWatch.js';
 import { t } from './lib/i18n.js';
 
@@ -105,7 +105,7 @@ function View({ route, navigate }) {
 }
 
 function Shell() {
-  const { settings, loading, storageError, addSession } = useStore();
+  const { settings, updateSettings, loading, storageError, addSession } = useStore();
   const { isRecording } = useRecorder();
   const { route, navigate } = useRouter();
   const [navOpen, setNavOpen] = useState(false);
@@ -145,9 +145,13 @@ function Shell() {
     };
   }, []);
 
+  // One-time move of an old private theme to the house theme list (standard 24),
+  // then the old setting is dropped so it never applies again.
   useEffect(() => {
-    applyTheme(settings.theme);
-  }, [settings.theme]);
+    if (!settings.theme) return;
+    migrateLegacyTheme(settings.theme);
+    updateSettings({ theme: undefined });
+  }, [settings.theme, updateSettings]);
 
   // Per-route tab title so history/bookmarks/multi-tab are distinguishable.
   useEffect(() => {

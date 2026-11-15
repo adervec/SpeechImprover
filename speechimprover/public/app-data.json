@@ -1,0 +1,8 @@
+{
+  "schema": 2,
+  "localStorage": ["si.*"],
+  "indexedDB": ["speechimprover"],
+  "drive": ["speechimprover-sync.json"],
+  "caches": [],
+  "export": "Settings > Data & storage > Export data (JSON)"
+}

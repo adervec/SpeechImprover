@@ -256,7 +256,7 @@ export function DriveSyncProvider({ children }) {
       deletedSessionIds: loadTombstones(),
       profile,
       profileUpdatedAt: Number(localStorage.getItem(PROFILE_TS_KEY)) || 0,
-      settings: { theme: settings.theme, recognitionEnabled: settings.recognitionEnabled },
+      settings: { recognitionEnabled: settings.recognitionEnabled }, // the colour theme is the house picker's, per device
       settingsUpdatedAt: Number(localStorage.getItem(SETTINGS_TS_KEY)) || 0,
     };
   }, [profile, settings]);
@@ -288,10 +288,7 @@ export function DriveSyncProvider({ children }) {
       }
       const localSettingsTs = Number(localStorage.getItem(SETTINGS_TS_KEY)) || 0;
       if ((merged.settingsUpdatedAt || 0) > localSettingsTs && merged.settings) {
-        updateSettings({
-          theme: merged.settings.theme,
-          recognitionEnabled: merged.settings.recognitionEnabled,
-        });
+        updateSettings({ recognitionEnabled: merged.settings.recognitionEnabled });
         localStorage.setItem(SETTINGS_TS_KEY, String(merged.settingsUpdatedAt));
       }
 

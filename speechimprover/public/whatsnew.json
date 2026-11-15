@@ -2,6 +2,7 @@
   {
     "date": "2026-11-14",
     "items": [
+      "Themes now match every other app on this site: System (follows your device), Light, Dark, Midnight, Slate, Ocean, Forest, Ember, Gold, Synthwave, Terminal, Paper, Pastel, Mono and High contrast, under Settings → Theme. Your old theme was moved to the closest match once; the old Aurora and Paper defaults now follow your device again.",
       "SpeechImprover now speaks 16 more languages (French, Spanish, Portuguese, Italian, Croatian, German, Chinese, Ukrainian, Esperanto, Swahili, Hindi, Bengali, Indonesian, Urdu, Farsi and Arabic): pick one under Settings → Theme → Language. These are machine translations, and the menus, header and dashboard come first — more screens will follow."
     ]
   },

@@ -66,5 +66,12 @@ export async function demo() {
   ok(map.has('maker-font') && map.has('portal-activity') && map.has('tr.settings') && map.has('sim') && map.has('cowork-state:tachyread') && map.has('cowork-device'), "other apps' keys untouched");
   ok(dbDeleted, 'own IndexedDB deleted');
   ok(!cacheNames.has('si-v1') && cacheNames.has('tachyread-v3'), 'only our SW cache removed');
+  // The data inventory (house standard 23) must name exactly what Erase removes.
+  if (globalThis.process?.versions?.node) {
+    const inv = JSON.parse(await import('node:fs').then((fs) => fs.readFileSync(new URL('../../public/app-data.json', import.meta.url), 'utf8')));
+    ok(Number.isInteger(inv.schema) && inv.schema >= 1, 'app-data.json has a whole-number schema');
+    ok(inv.localStorage.includes(KEY_PREFIX + '*'), 'app-data.json declares the si.* keys');
+    ok(inv.indexedDB.includes(DB_NAME), 'app-data.json declares the speechimprover database');
+  }
   return 'eraseAll.demo: ok';
 }

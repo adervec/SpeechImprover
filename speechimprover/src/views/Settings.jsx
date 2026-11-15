@@ -4,7 +4,8 @@ import { useDriveSync } from '../lib/driveSync.jsx';
 import { useRecorder } from '../lib/recorderContext.jsx';
 import { useMediaDevices } from '../hooks/useMediaDevices.js';
 import { Modal, useToast } from '../components/ui.jsx';
-import { THEMES, THEME_KEYS } from '../styles/themes.js';
+import { migrateLegacyTheme } from '../styles/themes.js';
+import { t } from '../lib/i18n.js';
 import { exportData, importData, downloadJson } from '../lib/exportImport.js';
 import { formatBytes, localDayKey } from '../lib/format.js';
 import { eraseAllLocalData, dropCoworkFolder } from '../lib/eraseAll.js';
@@ -75,7 +76,7 @@ export default function Settings() {
       const json = JSON.parse(await file.text());
       const res = await importData(json);
       if (res.profile) updateProfile(res.profile);
-      if (res.settings?.theme) updateSettings({ theme: res.settings.theme });
+      if (res.settings?.theme) migrateLegacyTheme(res.settings.theme); // an old export's theme, onto the house list
       await refresh();
       toast(`Imported ${res.importedSessions} sessions, ${res.importedAudio} audio clips.`);
     } catch (err) {
@@ -90,37 +91,13 @@ export default function Settings() {
       {/* Themes */}
       <div className="card">
         <div className="card-head">
-          <h3>Theme</h3>
-          {/* Shared house-font picker from adervec.github.io/font.js — the choice applies to every app there. */}
-          <app-font-picker label="Font" class="small"></app-font-picker>
+          <h3>{t('Theme')}</h3>
         </div>
-        <div className="grid cols-3">
-          {THEME_KEYS.map((key) => {
-            const t = THEMES[key];
-            const active = settings.theme === key;
-            return (
-              <button
-                key={key}
-                onClick={() => updateSettings({ theme: key })}
-                className="card tight"
-                style={{
-                  textAlign: 'left', cursor: 'pointer',
-                  borderColor: active ? 'var(--accent)' : 'var(--border)',
-                  borderWidth: active ? 2 : 1, borderStyle: 'solid',
-                }}
-              >
-                <div className="row spread">
-                  <b>{t.label}</b>
-                  {active && <span className="tag">active</span>}
-                </div>
-                <div className="row" style={{ gap: 6, marginTop: 10 }}>
-                  <span style={{ width: 40, height: 22, borderRadius: 6, background: t.vars['--bg'], border: '1px solid var(--border)' }} />
-                  <span style={{ width: 22, height: 22, borderRadius: 6, background: t.swatch[0] }} />
-                  <span style={{ width: 22, height: 22, borderRadius: 6, background: t.swatch[1] }} />
-                </div>
-              </button>
-            );
-          })}
+        {/* House pickers from adervec.github.io/font.js (standards 2, 20, 24): the colour theme is kept
+            for this app; font, language and regional settings apply to every app there. */}
+        <div className="stack" style={{ gap: 10 }}>
+          <app-theme-picker label={t('Colour theme')}></app-theme-picker>
+          <app-font-picker label={t('Font')}></app-font-picker>
         </div>
       </div>
 
@@ -299,7 +276,7 @@ function CloudSync() {
       {!connected ? (
         <>
           <p className="small" style={{ marginBottom: 12 }}>
-            Optionally sync your sessions, profile and theme across devices via your own Google Drive.
+            Optionally sync your sessions, profile and settings across devices via your own Google Drive.
             Data lives in a private app folder in <b>your</b> Drive — opt-in, and never on our servers.
             Audio recordings stay on this device.
           </p>

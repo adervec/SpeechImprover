@@ -1,373 +1,53 @@
-// Multiple modern themes. Each theme is a set of CSS custom properties applied
-// to :root by useTheme. Add a theme here and it appears in the Settings picker.
+// House standard 24: one theme list for every app. The list, the palettes and the
+// reader's choice live in font.js (appFont.themes / theme() / setTheme(), and
+// <app-theme-picker> in Settings); index.css maps the palette's --t-* variables
+// onto this app's own (--bg, --surface, --accent, …). This file only carries the
+// one-time move from SpeechImprover's old private themes to the house list.
 
-export const THEMES = {
-  aurora: {
-    label: 'Aurora',
-    swatch: ['#6d5efc', '#22d3ee'],
-    vars: {
-      '--bg': '#0e1018',
-      '--bg-2': '#151826',
-      '--surface': '#1a1e30',
-      '--surface-2': '#222740',
-      '--border': '#2c3350',
-      '--text': '#e8eaf2',
-      '--text-dim': '#9aa3c0',
-      '--accent': '#7c6cff',
-      '--accent-2': '#22d3ee',
-      '--accent-contrast': '#ffffff',
-      '--good': '#34d399',
-      '--warn': '#fbbf24',
-      '--bad': '#fb7185',
-      '--rec': '#ff3b5c',
-      '--shadow': '0 10px 40px rgba(0,0,0,.45)',
-    },
-  },
-  midnight: {
-    label: 'Midnight Ink',
-    swatch: ['#3b82f6', '#0ea5e9'],
-    vars: {
-      '--bg': '#0b0f1a',
-      '--bg-2': '#101626',
-      '--surface': '#141b2e',
-      '--surface-2': '#1c2740',
-      '--border': '#243150',
-      '--text': '#e6edf7',
-      '--text-dim': '#8ca0c0',
-      '--accent': '#3b82f6',
-      '--accent-2': '#0ea5e9',
-      '--accent-contrast': '#ffffff',
-      '--good': '#22c55e',
-      '--warn': '#f59e0b',
-      '--bad': '#ef4444',
-      '--rec': '#f43f5e',
-      '--shadow': '0 10px 40px rgba(0,0,0,.5)',
-    },
-  },
-  ember: {
-    label: 'Ember',
-    swatch: ['#fb7185', '#f59e0b'],
-    vars: {
-      '--bg': '#160f12',
-      '--bg-2': '#1f1418',
-      '--surface': '#241519',
-      '--surface-2': '#311b21',
-      '--border': '#43262e',
-      '--text': '#f6e9ea',
-      '--text-dim': '#c79ba0',
-      '--accent': '#fb7185',
-      '--accent-2': '#f59e0b',
-      '--accent-contrast': '#1a0d10',
-      '--good': '#4ade80',
-      '--warn': '#fbbf24',
-      '--bad': '#f87171',
-      '--rec': '#ff2d55',
-      '--shadow': '0 10px 40px rgba(0,0,0,.5)',
-    },
-  },
-  forest: {
-    label: 'Deep Forest',
-    swatch: ['#34d399', '#a3e635'],
-    vars: {
-      '--bg': '#0c130f',
-      '--bg-2': '#101a14',
-      '--surface': '#13201a',
-      '--surface-2': '#1a2c22',
-      '--border': '#244234',
-      '--text': '#e8f3ec',
-      '--text-dim': '#93b3a2',
-      '--accent': '#34d399',
-      '--accent-2': '#a3e635',
-      '--accent-contrast': '#08120c',
-      '--good': '#4ade80',
-      '--warn': '#facc15',
-      '--bad': '#fb7185',
-      '--rec': '#ff4d6d',
-      '--shadow': '0 10px 40px rgba(0,0,0,.5)',
-    },
-  },
-  paper: {
-    label: 'Paper (light)',
-    swatch: ['#2e6db4', '#c0612f'],
-    vars: {
-      '--bg': '#f3efe7',
-      '--bg-2': '#ece6da',
-      '--surface': '#fffdf9',
-      '--surface-2': '#f6f1e8',
-      '--border': '#dcd4c4',
-      '--text': '#1f2937',
-      '--text-dim': '#6b7280',
-      '--accent': '#2e6db4',
-      '--accent-2': '#c0612f',
-      '--accent-contrast': '#ffffff',
-      '--good': '#15803d',
-      '--warn': '#b45309',
-      '--bad': '#b91c1c',
-      '--rec': '#dc2626',
-      '--shadow': '0 8px 28px rgba(31,58,95,.12)',
-    },
-  },
-  mono: {
-    label: 'Mono Slate (light)',
-    swatch: ['#111827', '#6366f1'],
-    vars: {
-      '--bg': '#eef1f5',
-      '--bg-2': '#e3e8ef',
-      '--surface': '#ffffff',
-      '--surface-2': '#f1f4f9',
-      '--border': '#d3dae4',
-      '--text': '#0f172a',
-      '--text-dim': '#64748b',
-      '--accent': '#4f46e5',
-      '--accent-2': '#0ea5e9',
-      '--accent-contrast': '#ffffff',
-      '--good': '#059669',
-      '--warn': '#d97706',
-      '--bad': '#dc2626',
-      '--rec': '#e11d48',
-      '--shadow': '0 8px 28px rgba(15,23,42,.10)',
-    },
-  },
-  nord: {
-    label: 'Nord',
-    swatch: ['#88c0d0', '#5e81ac'],
-    vars: {
-      '--bg': '#242933',
-      '--bg-2': '#2e3440',
-      '--surface': '#333b4c',
-      '--surface-2': '#3b4252',
-      '--border': '#434c5e',
-      '--text': '#eceff4',
-      '--text-dim': '#9aa6bd',
-      '--accent': '#88c0d0',
-      '--accent-2': '#5e81ac',
-      '--accent-contrast': '#1c222c',
-      '--good': '#a3be8c',
-      '--warn': '#ebcb8b',
-      '--bad': '#bf616a',
-      '--rec': '#d08770',
-      '--shadow': '0 10px 40px rgba(0,0,0,.45)',
-    },
-  },
-  dracula: {
-    label: 'Dracula',
-    swatch: ['#bd93f9', '#ff79c6'],
-    vars: {
-      '--bg': '#1e1f29',
-      '--bg-2': '#282a36',
-      '--surface': '#2d2f3d',
-      '--surface-2': '#383a4a',
-      '--border': '#44475a',
-      '--text': '#f8f8f2',
-      '--text-dim': '#a6accd',
-      '--accent': '#bd93f9',
-      '--accent-2': '#ff79c6',
-      '--accent-contrast': '#1e1f29',
-      '--good': '#50fa7b',
-      '--warn': '#f1fa8c',
-      '--bad': '#ff5555',
-      '--rec': '#ff5599',
-      '--shadow': '0 10px 40px rgba(0,0,0,.5)',
-    },
-  },
-  synthwave: {
-    label: 'Synthwave',
-    swatch: ['#ff2e97', '#03dac6'],
-    vars: {
-      '--bg': '#160e2e',
-      '--bg-2': '#1d1340',
-      '--surface': '#241a4d',
-      '--surface-2': '#2f2363',
-      '--border': '#3c2c7a',
-      '--text': '#f5e9ff',
-      '--text-dim': '#b29bd8',
-      '--accent': '#ff2e97',
-      '--accent-2': '#22d3ee',
-      '--accent-contrast': '#160e2e',
-      '--good': '#36f9b3',
-      '--warn': '#ffcc66',
-      '--bad': '#ff5c7c',
-      '--rec': '#ff2e97',
-      '--shadow': '0 10px 44px rgba(40,0,60,.6)',
-    },
-  },
-  rosepine: {
-    label: 'Rosé Pine',
-    swatch: ['#ebbcba', '#c4a7e7'],
-    vars: {
-      '--bg': '#191724',
-      '--bg-2': '#1f1d2e',
-      '--surface': '#26233a',
-      '--surface-2': '#2f2b45',
-      '--border': '#3a3553',
-      '--text': '#e0def4',
-      '--text-dim': '#a6a0c4',
-      '--accent': '#ebbcba',
-      '--accent-2': '#c4a7e7',
-      '--accent-contrast': '#191724',
-      '--good': '#9ccfd8',
-      '--warn': '#f6c177',
-      '--bad': '#eb6f92',
-      '--rec': '#eb6f92',
-      '--shadow': '0 10px 40px rgba(0,0,0,.5)',
-    },
-  },
-  gruvbox: {
-    label: 'Gruvbox',
-    swatch: ['#fabd2f', '#fe8019'],
-    vars: {
-      '--bg': '#1d2021',
-      '--bg-2': '#282828',
-      '--surface': '#32302f',
-      '--surface-2': '#3c3836',
-      '--border': '#504945',
-      '--text': '#fbf1c7',
-      '--text-dim': '#bdae93',
-      '--accent': '#fabd2f',
-      '--accent-2': '#fe8019',
-      '--accent-contrast': '#1d2021',
-      '--good': '#b8bb26',
-      '--warn': '#fabd2f',
-      '--bad': '#fb4934',
-      '--rec': '#fb4934',
-      '--shadow': '0 10px 40px rgba(0,0,0,.5)',
-    },
-  },
-  oceanic: {
-    label: 'Oceanic',
-    swatch: ['#27e0d8', '#3b82f6'],
-    vars: {
-      '--bg': '#08141f',
-      '--bg-2': '#0c1d2b',
-      '--surface': '#102636',
-      '--surface-2': '#163246',
-      '--border': '#1f4156',
-      '--text': '#e4f3f7',
-      '--text-dim': '#86a7b8',
-      '--accent': '#22d3d3',
-      '--accent-2': '#3b82f6',
-      '--accent-contrast': '#04121b',
-      '--good': '#2dd4bf',
-      '--warn': '#f5b945',
-      '--bad': '#f4626f',
-      '--rec': '#ff4d6d',
-      '--shadow': '0 10px 40px rgba(0,0,0,.5)',
-    },
-  },
-  solarizedDark: {
-    label: 'Solarized (dark)',
-    swatch: ['#268bd2', '#2aa198'],
-    vars: {
-      '--bg': '#002430',
-      '--bg-2': '#002b36',
-      '--surface': '#073642',
-      '--surface-2': '#0c4250',
-      '--border': '#0f4d5e',
-      '--text': '#eee8d5',
-      '--text-dim': '#93a1a1',
-      '--accent': '#268bd2',
-      '--accent-2': '#2aa198',
-      '--accent-contrast': '#002b36',
-      '--good': '#859900',
-      '--warn': '#b58900',
-      '--bad': '#dc322f',
-      '--rec': '#d33682',
-      '--shadow': '0 10px 40px rgba(0,0,0,.5)',
-    },
-  },
-  solarizedLight: {
-    label: 'Solarized (light)',
-    swatch: ['#268bd2', '#b58900'],
-    vars: {
-      '--bg': '#fdf6e3',
-      '--bg-2': '#f3ecd6',
-      '--surface': '#fffbf0',
-      '--surface-2': '#f6efd9',
-      '--border': '#e3dcc4',
-      '--text': '#073642',
-      '--text-dim': '#657b83',
-      '--accent': '#268bd2',
-      '--accent-2': '#b58900',
-      '--accent-contrast': '#ffffff',
-      '--good': '#647d00',
-      '--warn': '#b58900',
-      '--bad': '#dc322f',
-      '--rec': '#d33682',
-      '--shadow': '0 8px 28px rgba(101,123,131,.16)',
-    },
-  },
-  sepia: {
-    label: 'Sepia (light)',
-    swatch: ['#9a6a3c', '#4a7a6f'],
-    vars: {
-      '--bg': '#efe6d4',
-      '--bg-2': '#e7dcc4',
-      '--surface': '#faf3e3',
-      '--surface-2': '#f0e7d2',
-      '--border': '#d9caac',
-      '--text': '#3a2f23',
-      '--text-dim': '#7a6a52',
-      '--accent': '#9a6a3c',
-      '--accent-2': '#4a7a6f',
-      '--accent-contrast': '#fff8ec',
-      '--good': '#5a7d3c',
-      '--warn': '#b07012',
-      '--bad': '#b1402f',
-      '--rec': '#bb3b2b',
-      '--shadow': '0 8px 28px rgba(90,70,40,.16)',
-    },
-  },
-  contrast: {
-    label: 'High contrast',
-    swatch: ['#ffd400', '#00e0ff'],
-    vars: {
-      '--bg': '#000000',
-      '--bg-2': '#0a0a0a',
-      '--surface': '#121212',
-      '--surface-2': '#1c1c1c',
-      '--border': '#5a5a5a',
-      '--text': '#ffffff',
-      '--text-dim': '#c8c8c8',
-      '--accent': '#ffd400',
-      '--accent-2': '#00e0ff',
-      '--accent-contrast': '#000000',
-      '--good': '#22ff88',
-      '--warn': '#ffb000',
-      '--bad': '#ff4d4d',
-      '--rec': '#ff2d2d',
-      '--shadow': '0 10px 40px rgba(0,0,0,.7)',
-    },
-  },
+// Old theme -> nearest house theme. Aurora and Paper were the automatic defaults
+// (dark / light device), so they become 'system': the device decides again.
+export const LEGACY_TO_HOUSE = {
+  aurora: 'system',
+  paper: 'system',
+  midnight: 'midnight',
+  ember: 'ember',
+  forest: 'forest',
+  mono: 'mono',
+  nord: 'slate',
+  dracula: 'midnight',
+  synthwave: 'synthwave',
+  rosepine: 'midnight',
+  gruvbox: 'gold',
+  oceanic: 'ocean',
+  solarizedDark: 'slate',
+  solarizedLight: 'paper',
+  sepia: 'paper',
+  contrast: 'contrast',
 };
 
-export const THEME_KEYS = Object.keys(THEMES);
-
-export function applyTheme(key) {
-  const theme = THEMES[key] || THEMES.aurora;
-  const root = document.documentElement;
-  for (const [k, v] of Object.entries(theme.vars)) {
-    root.style.setProperty(k, v);
-  }
-  root.setAttribute('data-theme', key);
-}
-
-// House rule: with no saved theme, start from the device's light/dark setting
-// (font.js's appFont.systemTheme() when loaded, else prefers-color-scheme).
-// A saved choice always wins — this only feeds the default.
-export const DEVICE_THEMES = { dark: 'aurora', light: 'paper' };
-export function defaultTheme(win = globalThis.window) {
-  const sys = win?.appFont?.systemTheme?.()
-    ?? (win?.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-  return DEVICE_THEMES[sys] || DEVICE_THEMES.dark;
+// Apply a reader's old saved theme to the house picker, once. Never overrides a
+// choice already made in the house picker (a saved choice always wins).
+// Returns the house id applied, or null when nothing changed.
+export function migrateLegacyTheme(oldKey, appFont = globalThis.window?.appFont) {
+  if (!oldKey || !appFont?.setTheme) return null;
+  if (appFont.theme?.() && appFont.theme() !== 'system') return null;
+  const id = LEGACY_TO_HOUSE[oldKey] || 'system';
+  if (id !== 'system') appFont.setTheme(id);
+  return id;
 }
 
 export function demo() {
   const ok = (c, m) => { if (!c) throw new Error(`themes: ${m}`); };
-  const mm = (light) => ({ matchMedia: (q) => ({ matches: q.includes('light') && light }) });
-  ok(defaultTheme(mm(true)) === 'paper', 'light device → Paper');
-  ok(defaultTheme(mm(false)) === 'aurora', 'dark device → Aurora');
-  ok(defaultTheme({ appFont: { systemTheme: () => 'light' }, ...mm(false) }) === 'paper', 'appFont.systemTheme() preferred');
-  ok(defaultTheme(undefined) === 'aurora', 'no window (node) → dark default');
-  ok(Object.values(DEVICE_THEMES).every((k) => THEMES[k]), 'device themes exist');
+  const fake = (choice = 'system') => ({ chosen: choice, theme() { return this.chosen; }, setTheme(id) { this.chosen = id; } });
+  let f = fake();
+  ok(migrateLegacyTheme('gruvbox', f) === 'gold' && f.chosen === 'gold', 'old theme maps to the nearest house theme');
+  f = fake();
+  ok(migrateLegacyTheme('aurora', f) === 'system' && f.chosen === 'system', 'the old automatic default follows the device');
+  f = fake('ocean');
+  ok(migrateLegacyTheme('ember', f) === null && f.chosen === 'ocean', 'a house choice already made always wins');
+  ok(migrateLegacyTheme('ember', undefined) === null, 'no font.js (offline): nothing happens');
+  ok(migrateLegacyTheme('who-knows', fake()) === 'system', 'unknown old theme → System');
+  const HOUSE = ['system', 'light', 'dark', 'midnight', 'slate', 'ocean', 'forest', 'ember', 'gold', 'synthwave', 'terminal', 'paper', 'pastel', 'mono', 'contrast'];
+  ok(Object.values(LEGACY_TO_HOUSE).every((id) => HOUSE.includes(id)), 'every target is on the house list');
   return 'themes.demo: ok';
 }

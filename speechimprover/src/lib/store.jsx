@@ -3,7 +3,6 @@
 // or seed data, and any left over from older versions is purged on load.
 /* eslint-disable react-refresh/only-export-components -- context provider + its hook. */
 
-import { defaultTheme } from '../styles/themes.js';
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import {
   getAllSessions,
@@ -34,9 +33,8 @@ const DEFAULT_PROFILE = {
   notes: '',
 };
 
-// theme: the device's light/dark setting until the reader picks one (saved settings win).
+// The colour theme is not kept here any more: it is the house picker's (font.js, standard 24).
 const DEFAULT_SETTINGS = {
-  theme: defaultTheme(),
   inputDeviceId: '',
   outputDeviceId: '',
   recognitionEnabled: true,
@@ -290,8 +288,12 @@ export function StoreProvider({ children }) {
       record.audioBytes = blob.size;
     }
     await putSession(record);
-    // maker-portal character sheet (same-origin localStorage; stays in this browser)
-    try { const k = 'portal-activity', a = JSON.parse(localStorage.getItem(k) || '[]'); a.push([Math.round(Date.now() / 1000), 'SpeechImprover', 'speak', 1]); localStorage.setItem(k, JSON.stringify(a.slice(-2000))); } catch { /* quota — ignore */ }
+    // House standard 25: tell the hub once per finished take (font.js dedupes by id, so a
+    // re-save or a sync that brings the session back never counts twice). Takes imported
+    // from Tachyread are logged by Tachyread itself.
+    if (record.source !== 'tachyread') {
+      window.appFont?.logSession?.({ kind: 'speak', minutes: Math.max(1, Math.round((record.durationSec || 60) / 60)), id: record.id, at: Date.parse(record.createdAt) || undefined });
+    }
     setSessions((prev) => [record, ...prev].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)));
     return record;
   }, []);
