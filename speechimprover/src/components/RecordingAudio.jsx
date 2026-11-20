@@ -7,7 +7,7 @@
 
 import { useRef } from 'react';
 
-export default function RecordingAudio({ src, style, ...rest }) {
+export default function RecordingAudio({ src, style, audioRef, ...rest }) {
   const fixed = useRef(false);
 
   const onLoadedMetadata = (e) => {
@@ -21,5 +21,5 @@ export default function RecordingAudio({ src, style, ...rest }) {
     }
   };
 
-  return <audio src={src} controls onLoadedMetadata={onLoadedMetadata} style={{ width: '100%', ...style }} {...rest} />;
+  return <audio ref={audioRef} src={src} controls onLoadedMetadata={onLoadedMetadata} style={{ width: '100%', ...style }} {...rest} />;
 }

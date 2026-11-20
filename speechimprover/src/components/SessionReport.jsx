@@ -9,6 +9,7 @@ import AnnotatedTranscript from './AnnotatedTranscript.jsx';
 import ImprovedVoicePreview from './ImprovedVoicePreview.jsx';
 import RecordingAudio from './RecordingAudio.jsx';
 import TakeSplitsCard from './TakeSplitsCard.jsx';
+import SittingTimeline from './SittingTimeline.jsx';
 import { useStore } from '../lib/store.jsx';
 import { ATTRIBUTES, REFERENCE_PROFILES, coachingCues } from '../lib/analysis/attributes.js';
 import { formatDuration } from '../lib/format.js';
@@ -285,6 +286,8 @@ export default function SessionReport({ session, audioUrl, onSelectAttr, focusAt
         </div>
       </div>
 
+      <SittingTimeline session={session} audioUrl={audioUrl} />
+
       <TakeSplitsCard session={session} />
 
       <div className="card">
@@ -312,9 +315,9 @@ export default function SessionReport({ session, audioUrl, onSelectAttr, focusAt
         </div>
       </div>
 
-      {audioUrl && <ImprovedVoicePreview audioUrl={audioUrl} session={session} />}
+      {audioUrl && !session.chunks && <ImprovedVoicePreview audioUrl={audioUrl} session={session} />}
 
-      {audioUrl && (
+      {audioUrl && !(session.chunks?.length > 1) && (
         <div className="card">
           <div className="card-head"><h3>Recording</h3></div>
           <RecordingAudio src={audioUrl} />

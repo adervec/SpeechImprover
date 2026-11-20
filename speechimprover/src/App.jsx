@@ -13,6 +13,7 @@ import { t } from './lib/i18n.js';
 
 import Dashboard from './views/Dashboard.jsx';
 import Practice from './views/Practice.jsx';
+import Sitting from './views/Sitting.jsx';
 import Exercises from './views/Exercises.jsx';
 import Projects from './views/Projects.jsx';
 import Mastery from './views/Mastery.jsx';
@@ -70,6 +71,8 @@ class ErrorBoundary extends Component {
 function View({ route, navigate }) {
   switch (route.page) {
     case 'practice':
+      // "Just speak" (?quick=1) is its own open-ended mode
+      if (route.query.quick === '1' && !route.query.exercise && !route.query.technique) return <Sitting route={route} navigate={navigate} />;
       return <Practice key={`${route.query.exercise || route.query.technique || (route.query.quick ? 'quick' : 'new')}-${route.query.step ?? route.query.stage ?? ''}`} route={route} navigate={navigate} />;
     case 'exercises':
       return <Exercises route={route} navigate={navigate} />;

@@ -61,7 +61,7 @@ export default function Dashboard({ navigate }) {
         <div className="row">
           <button className="btn" onClick={() => navigate('exercises')}>✦ {t("Today's program")}</button>
           <button className="btn" onClick={() => navigate('practice')}>● {t('New session')}</button>
-          <button className="btn primary" onClick={() => navigate('practice', { query: { quick: '1' } })} title={t('Skip setup — free speaking starts after a 3-2-1')}>🎙️ {t('Just speak')}</button>
+          <button className="btn primary" onClick={() => navigate('practice', { query: { quick: '1' } })} title={t('No topic, no time limit — speak or read aloud for as long as you like')}>🎙️ {t('Just speak')}</button>
         </div>
       </div>
 

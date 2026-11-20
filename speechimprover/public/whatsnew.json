@@ -1,5 +1,15 @@
 [
   {
+    "date": "2026-11-20",
+    "items": [
+      "Just speak is now an open-ended sitting: no topic and no time limit. Talk or read a book aloud for as long as you like — an hour is fine — pausing with Space or simply stopping for a break; long silences are not counted.",
+      "While you speak you see your speaking time, a score for every 2 minutes so far, and a nudge if your pace, energy or pitch starts to drift.",
+      "At the end you get a full review: every score charted across the sitting, your strongest and weakest stretches with playback from that spot, and halves, thirds and quarters.",
+      "Tick “I am reading a book aloud” and word choice and fillers are left out of the score, since the words are the author's.",
+      "If the page closes mid-sitting, the app offers to recover everything scored up to the last 2 minutes."
+    ]
+  },
+  {
     "date": "2026-11-14",
     "items": [
       "Themes now match every other app on this site: System (follows your device), Light, Dark, Midnight, Slate, Ocean, Forest, Ember, Gold, Synthwave, Terminal, Paper, Pastel, Mono and High contrast, under Settings → Theme. Your old theme was moved to the closest match once; the old Aurora and Paper defaults now follow your device again.",

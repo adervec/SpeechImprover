@@ -5,7 +5,7 @@ import { t } from '../lib/i18n.js';
 // Translated at render time (a function, not a constant).
 const commands = () => [
   { id: '', label: t('Dashboard'), hint: t('Home & stats') },
-  { id: 'practice', label: t('Just speak'), hint: t('Free speaking — start recording now'), query: { quick: '1' } },
+  { id: 'practice', label: t('Just speak'), hint: t('Speak or read aloud for as long as you like'), query: { quick: '1' } },
   { id: 'practice', label: t('Practice'), hint: t('Record a new session') },
   { id: 'exercises', label: t('Exercises'), hint: t('Drills & daily program') },
   { id: 'projects', label: t('Projects'), hint: t('Books & recording series') },

@@ -71,7 +71,7 @@ export function Sidebar({ route, navigate, open, onClose }) {
       ))}
       <div className="nav-spacer" />
       <button type="button" className="nav-link primary-cta" onClick={() => go('practice', { query: { quick: '1' } })} style={{ color: 'var(--accent)' }}
-        title={t('Skip setup — free speaking starts after a 3-2-1')}>
+        title={t('No topic, no time limit — speak or read aloud for as long as you like')}>
         <span className="ico">🎙️</span>{t('Just speak')}
       </button>
       <button type="button" className="nav-link primary-cta" onClick={() => go('practice')} style={{ color: 'var(--accent)' }}>

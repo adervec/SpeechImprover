@@ -155,6 +155,9 @@ export function buildReviewDataset(sessions, profile, limit = 10) {
       metrics: Object.fromEntries(KEY_METRICS.filter((key) => m[key] != null).map((key) => [key, round2(m[key])])),
       // how each attribute moved through the take (finest split available)
       parts: k ? scoredParts[k].map((pt, i) => ({ part: i + 1, of: k, overall: pt.overall, attributes: pt.scores })) : null,
+      // a long sitting: the score of each ~2-minute part, in order
+      sittingParts: s.chunks ? s.chunks.map((c) => ({ part: c.i + 1, speakSec: c.speakSec, overall: c.overall, wpm: c.wpm })) : null,
+      bookReading: !!s.book,
       speakerNote: s.notes || '',
     };
   });

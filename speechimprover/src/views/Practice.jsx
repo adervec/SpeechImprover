@@ -147,9 +147,6 @@ export default function Practice({ route, navigate }) {
   const [customPrompt, setCustomPrompt] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState(route.query.project || '');
   const [exercise, setExercise] = useState(queryExercise);
-  // "Just speak" (?quick=1): free speaking with the setup folded away, counting in straight away.
-  const quick = route.query.quick === '1' && !queryExercise;
-  const [showSetup, setShowSetup] = useState(!quick);
   const [result, setResult] = useState(null); // { session, audioUrl }
   const [pendingRec, setPendingRec] = useState(null); // finished take awaiting submit/restart/abandon
   const [showModel, setShowModel] = useState(true);
@@ -275,13 +272,6 @@ export default function Practice({ route, navigate }) {
     cancelTTS();
     setListen(null);
   }
-
-  useEffect(() => {
-    if (!quick) return undefined;
-    const t = setTimeout(handleStart, 0); // deferred: no synchronous setState in an effect
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   function handleStart() {
     if (starting || countdown) return;
@@ -616,18 +606,7 @@ ${words.join(', ')}.`, `miss-drill-${Date.now()}`),
         </div>
       )}
 
-      {!recording && !showSetup && !exercise && (
-        <div className="card tight">
-          <div className="row spread wrap" style={{ gap: 8 }}>
-            <span className="small">
-              <b>🎙️ Just speaking</b> · {freeTone.emoji} {freeTone.label} · {formatDuration(talkTarget)} target
-            </span>
-            <button className="btn ghost sm" onClick={() => setShowSetup(true)}>Change setup</button>
-          </div>
-        </div>
-      )}
-
-      {!recording && (showSetup || exercise) && (
+      {!recording && (
         <div className="card">
           <div className="card-head"><h3>What do you want to practice?</h3></div>
           {exercise ? (

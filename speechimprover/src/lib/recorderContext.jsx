@@ -43,6 +43,14 @@ export function RecorderProvider({ children }) {
   const confidenceRef = useRef(0);
   // [{ t: seconds since start, words }] per final recognition segment → pace timeline.
   const paceMarksRef = useRef([]);
+  // Long "sitting" mode (lib/sitting.js): the engine scoring chunks as you go, its feed
+  // timer, and the last time the recogniser said anything (stall watchdog).
+  const sittingRef = useRef(null);
+  const sittingTimerRef = useRef(null);
+  const lastRecogRef = useRef(0);
+  const pausedRef = useRef(false);
+  const [paused, setPaused] = useState(false);
+  const [sittingLive, setSittingLive] = useState(null);
   const confSumRef = useRef(0);
   const confCountRef = useRef(0);
   const manualStopRef = useRef(false);
@@ -176,6 +184,8 @@ export function RecorderProvider({ children }) {
         const seg = segment.trim();
         if (seg) {
           finalTextRef.current = (finalTextRef.current ? `${finalTextRef.current} ${seg}` : seg).trim();
+          sittingRef.current?.addWords(seg);
+          lastRecogRef.current = performance.now();
           paceMarksRef.current.push({
             t: Math.round((performance.now() - startTimeRef.current) / 100) / 10,
             words: seg.split(/\s+/).length,
@@ -191,7 +201,7 @@ export function RecorderProvider({ children }) {
           confidenceRef.current = confSumRef.current / confCountRef.current;
         }
       },
-      onInterim: (it) => { interimRef.current = it; setInterim(it); },
+      onInterim: (it) => { interimRef.current = it; lastRecogRef.current = performance.now(); setInterim(it); },
       onError: (err) => {
         if (err === 'not-allowed' || err === 'service-not-allowed') {
           recognitionFatalRef.current = true;
@@ -222,7 +232,7 @@ export function RecorderProvider({ children }) {
     return rec;
   }, []);
 
-  const startRecording = useCallback(async (deviceId, { recognition = true } = {}) => {
+  const startRecording = useCallback(async (deviceId, { recognition = true, sitting = null } = {}) => {
     setError(null);
     try {
       // reuse an existing monitor stream on the same device if present
@@ -264,8 +274,33 @@ export function RecorderProvider({ children }) {
         setElapsedMs(performance.now() - startTimeRef.current);
       }, 200);
 
+      pausedRef.current = false;
+      setPaused(false);
+      // `sitting` is a factory: it needs the stream's sample rate to size its analysis window.
+      const engine = sitting && audioCtxRef.current ? sitting(audioCtxRef.current.sampleRate) : null;
+      sittingRef.current = engine;
+      setSittingLive(null);
+      if (engine && analyserRef.current) {
+        // Sitting mode: a timer (not requestAnimationFrame, which stops in a hidden tab)
+        // feeds the engine ~9 windows a second and publishes its state twice a second.
+        analyserRef.current.fftSize = engine.win;
+        const buf = new Float32Array(engine.win);
+        let lastPublish = 0;
+        lastRecogRef.current = performance.now();
+        sittingTimerRef.current = setInterval(() => {
+          if (pausedRef.current || !analyserRef.current) return;
+          const now = performance.now();
+          analyserRef.current.getFloatTimeDomainData(buf);
+          engine.pushWindow(buf, now / 1000);
+          if (now - lastPublish > 500) { lastPublish = now; setSittingLive(engine.live()); }
+          // Chrome's recogniser sometimes goes quiet without ending: nudge it (onEnd restarts it).
+          if (recognizerRef.current && now - lastRecogRef.current > 45000) {
+            lastRecogRef.current = now;
+            try { recognizerRef.current.stop(); } catch { /* already stopped */ }
+          }
+        }, 110);
+      } else if (audioCtxRef.current && analyserRef.current) {
       // Fresh live-metrics analyzer for this take (drops any monitor-time frames).
-      if (audioCtxRef.current && analyserRef.current) {
         const la = createLiveAnalyzer(audioCtxRef.current.sampleRate);
         analyserRef.current.fftSize = la.win;
         liveAnalyzerRef.current = la;
@@ -274,7 +309,7 @@ export function RecorderProvider({ children }) {
       setLiveMetrics(null);
       lastLiveSample.current = 0;
       lastLivePublish.current = 0;
-      liveActiveRef.current = true;
+      liveActiveRef.current = !engine;
 
       setMode('recording');
       return true;
@@ -285,8 +320,36 @@ export function RecorderProvider({ children }) {
     }
   }, [openStream, teardownStream, recognitionSupported, startRecognizer]);
 
+  // Sitting mode: a manual break. The audio recording, the feed and the recogniser all stop.
+  const pauseRecording = useCallback(() => {
+    if (pausedRef.current || !recorderRef.current) return;
+    pausedRef.current = true;
+    setPaused(true);
+    try { if (recorderRef.current.state === 'recording') recorderRef.current.pause(); } catch { /* not pausable */ }
+    if (recognizerRef.current) { manualStopRef.current = true; try { recognizerRef.current.stop(); } catch { /* stopped */ } }
+  }, []);
+  const resumeRecording = useCallback(() => {
+    if (!pausedRef.current || !recorderRef.current) return;
+    try { if (recorderRef.current.state === 'paused') recorderRef.current.resume(); } catch { /* not pausable */ }
+    sittingRef.current?.resumeClock();
+    lastRecogRef.current = performance.now();
+    if (recognizerRef.current && !recognitionFatalRef.current) { manualStopRef.current = false; startRecognizer(); }
+    pausedRef.current = false;
+    setPaused(false);
+  }, [startRecognizer]);
+  // The audio recorded so far (a crash-recovery copy; WebM stays playable when cut short).
+  const partialBlob = useCallback(() => {
+    const r = recorderRef.current;
+    return r ? { blob: new Blob(chunksRef.current, { type: r.mimeType || 'audio/webm' }), mime: r.mimeType || 'audio/webm' } : null;
+  }, []);
+
   const stopRecording = useCallback(() => {
     return new Promise((resolve) => {
+      if (sittingTimerRef.current) clearInterval(sittingTimerRef.current);
+      sittingTimerRef.current = null;
+      sittingRef.current = null;
+      pausedRef.current = false;
+      setPaused(false);
       const recorder = recorderRef.current;
       const durationSec = (performance.now() - startTimeRef.current) / 1000;
 
@@ -339,6 +402,11 @@ export function RecorderProvider({ children }) {
     recognitionError,
     recognitionSupported,
     liveMetrics,
+    sittingLive,
+    paused,
+    pauseRecording,
+    resumeRecording,
+    partialBlob,
     isRecording: mode === 'recording',
     isMonitoring: mode === 'monitoring',
     isActive: mode !== 'idle',
