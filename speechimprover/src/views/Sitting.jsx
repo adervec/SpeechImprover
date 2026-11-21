@@ -10,7 +10,8 @@ import { useRecorder } from '../lib/recorderContext.jsx';
 import { useToast } from '../components/ui.jsx';
 import SessionReport from '../components/SessionReport.jsx';
 import LiveFeedback from '../components/LiveFeedback.jsx';
-import { createSitting, summarizeSitting, driftNudges, CHUNK_SEC } from '../lib/sitting.js';
+import SittingTrends from '../components/SittingTrends.jsx';
+import { createSitting, summarizeSitting, driftNudges, runningScores, CHUNK_SEC } from '../lib/sitting.js';
 import { putAudio, getAudio, deleteAudio } from '../lib/db.js';
 import { requestSpeechReview } from '../lib/coworkEngine.jsx';
 import { formatDuration } from '../lib/format.js';
@@ -201,11 +202,24 @@ export default function Sitting({ route, navigate }) {
     const speakSec = live?.speakSec || 0;
     const status = recorder.paused ? t('Paused') : live?.onBreak ? t('On a break — speak to carry on') : t('Listening');
     const nudges = live ? driftNudges(live.chunks) : [];
+    // the sitting's score right now: every finished part, weighted by its speaking time
+    const soFar = chunkCount ? runningScores(live.chunks).at(-1).overall : null;
+    const partNow = live?.partOverall ?? null;
     return (
       <div className="stack">
         <div className="card" style={{ textAlign: 'center' }}>
           <div className="tag">{book ? t('Just speak · reading a book') : t('Just speak')}</div>
           <div className="mono" style={{ fontSize: '3rem', fontWeight: 800, lineHeight: 1.1 }} role="timer">{formatDuration(speakSec)}</div>
+          <div className="row" style={{ justifyContent: 'center', gap: 28, margin: '10px 0 4px' }}>
+            <div className="stat">
+              <span className="big" style={{ color: soFar == null ? 'var(--text-dim)' : tone(soFar) }}>{soFar ?? '–'}</span>
+              <span className="lbl">{t('Score so far')}</span>
+            </div>
+            <div className="stat">
+              <span className="big" style={{ color: partNow == null ? 'var(--text-dim)' : tone(partNow) }}>{partNow ?? '–'}</span>
+              <span className="lbl">{t('This part, live')}</span>
+            </div>
+          </div>
           <div className="small muted" role="status" aria-live="polite">
             {t('speaking time')} · {status}
             {live?.breaks ? <> · {t.n('{n} break', '{n} breaks', live.breaks)}</> : null}
@@ -249,6 +263,7 @@ export default function Sitting({ route, navigate }) {
               ))}
             </div>
           )}
+          {chunkCount > 0 && <div style={{ marginTop: 14 }}><SittingTrends chunks={live.chunks} /></div>}
         </div>
 
         <div className="card">

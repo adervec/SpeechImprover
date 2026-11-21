@@ -7,6 +7,7 @@ import { ATTRIBUTES } from '../lib/analysis/attributes.js';
 import { driftNudges } from '../lib/sitting.js';
 import { formatDuration } from '../lib/format.js';
 import RecordingAudio from './RecordingAudio.jsx';
+import SittingTrends from './SittingTrends.jsx';
 import { AttrLabel } from './ui.jsx';
 import { t } from '../lib/i18n.js';
 
@@ -101,6 +102,10 @@ export default function SittingTimeline({ session, audioUrl }) {
         <PartRow c={best} title={`✅ ${t('Strongest part')}`} from={startOf(best)} onPlay={audioUrl ? () => play(best) : null} />
         {best.i !== worst.i && <PartRow c={worst} title={`🎯 ${t('Weakest part')}`} from={startOf(worst)} onPlay={audioUrl ? () => play(worst) : null} />}
       </div>
+      <details style={{ marginTop: 12 }}>
+        <summary className="small" style={{ cursor: 'pointer', fontWeight: 700 }}>{t('Trend lines: overall and every component')}</summary>
+        <div style={{ marginTop: 10 }}><SittingTrends chunks={chunks} /></div>
+      </details>
       {audioUrl && (
         <div style={{ marginTop: 10 }}>
           <RecordingAudio src={audioUrl} audioRef={audioRef} />

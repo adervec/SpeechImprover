@@ -137,7 +137,9 @@ export function createSitting({ sampleRate, profile = {}, chunkSec = CHUNK_SEC, 
       // Complete metrics even in book mode: the live panel prints every attribute's detail.
       // (Book mode only changes what is SCORED; the screen parks those two chips.)
       const metrics = { ...snap, ...tx, recognitionConfidence: 0 };
-      return { metrics, wordCount: tx.wordCount, speakSec: spokenBefore + cur.speakSec, chunkSec: cur.speakSec, chunks, breaks, onBreak, recSec };
+      // the part being spoken, scored so far (needs a few seconds of sound to mean anything)
+      const partOverall = cur.speakSec >= 5 ? scoreFromMetrics(book ? forBook(metrics) : metrics, profile).overall : null;
+      return { metrics, partOverall, wordCount: tx.wordCount, speakSec: spokenBefore + cur.speakSec, chunkSec: cur.speakSec, chunks, breaks, onBreak, recSec };
     },
 
     // Everything needed to pick the sitting up again after a crash (small JSON).
@@ -189,6 +191,23 @@ export function summarizeSitting({ chunks, breaks = 0, transcript = '', book = f
     // slim per-chunk record kept on the session (the full metrics live in metrics.parts)
     chunks: chunks.map((c) => ({ i: c.i, recStart: c.recStart, speakSec: c.speakSec, overall: c.overall, scores: c.scores, wpm: Math.round(c.metrics.wpm || 0), fillers: c.metrics.fillerTotal || 0 })),
   };
+}
+
+// The sitting's score AS IT STOOD after each part: the speaking-time-weighted average of
+// every part up to and including that one, overall and per attribute. This is the
+// "where am I at" line; the parts themselves are the "how was that stretch" line.
+export function runningScores(chunks) {
+  const out = [];
+  const sum = {}; // key -> [weighted sum, weight]
+  const add = (k, v, w) => { if (v == null) return; const e = sum[k] || (sum[k] = [0, 0]); e[0] += v * w; e[1] += w; };
+  for (const c of chunks) {
+    add('overall', c.overall, c.speakSec);
+    for (const a of ATTRIBUTES) add(a.key, c.scores[a.key], c.speakSec);
+    const scores = {};
+    for (const a of ATTRIBUTES) scores[a.key] = sum[a.key] ? Math.round(sum[a.key][0] / sum[a.key][1]) : null;
+    out.push({ i: c.i, overall: Math.round(sum.overall[0] / sum.overall[1]), scores });
+  }
+  return out;
 }
 
 // Something drifting over the sitting: the last two chunks against the first two.
@@ -248,6 +267,10 @@ export function demo() {
   ok(result.overall > 0 && result.scores.pace != null && result.distances, 'sitting scored like a take');
   ok(result.metrics.parts[2].length === 2 && result.metrics.parts[4].length === 4, 'halves and quarters built from chunks');
   ok(Math.abs(result.durationSec - 123) < 4 && result.paceMarks.length === 4, 'duration is speaking time; a pace mark per chunk');
+  const runAvg = runningScores(result.chunks);
+  ok(runAvg.length === 4 && runAvg[0].overall === result.chunks[0].overall, 'running score starts at the first part');
+  ok(Math.abs(runAvg[3].overall - result.overall) <= 1, `running score ends at the sitting score (${runAvg[3].overall} vs ${result.overall})`);
+  ok(runAvg[3].scores.projection < runAvg[0].scores.projection && runAvg[3].scores.projection > result.chunks[3].scores.projection, 'running average moves more gently than the parts');
   ok(driftNudges(result.chunks).includes('energyFading'), `fading energy is flagged (got ${driftNudges(result.chunks)})`);
   ok(result.transcript.includes('quick brown') && result.transcript.includes('lazy dog'), 'transcript kept whole');
   // a loud bang mid-way must not turn the speech after it into silence
@@ -257,7 +280,10 @@ export function demo() {
   for (let k = 0; k < 200; k += 1) { s3.pushWindow(mk(0.05), t3); t3 += 0.1; }
   s3.pushWindow(mk(0.9), t3); t3 += 0.1; // the bang
   for (let k = 0; k < 400; k += 1) { s3.pushWindow(mk(0.05), t3); t3 += 0.1; }
-  ok(s3.live().speakSec > 50, `speech after a loud bang still counts (got ${s3.live().speakSec.toFixed(1)} of 60 s)`);
+  ok(createSitting({ sampleRate: sr }).live().partOverall === null, 'no live part score before any sound');
+  for (let k = 0; k < 100; k += 1) { s3.pushWindow(mk(0.05), t3); t3 += 0.1; } // 10 s into the third part
+  ok(s3.live().partOverall > 0, 'the part in progress has a live score');
+  ok(s3.live().speakSec > 50, `speech after a loud bang still counts (got ${s3.live().speakSec.toFixed(1)} of 70 s)`);
   const b = run(true).result;
   ok(b.scores.fillers === null && b.scores.nonRepetition === null && b.scores.pace != null, 'book mode drops word-choice scores, keeps pace');
   ok(b.chunks.every((c) => c.scores.fillers === null), 'book mode applies per chunk');

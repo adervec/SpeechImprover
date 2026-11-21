@@ -1,0 +1,2 @@
+# Paths the leak check may ignore, each with the reason (house standard 26).
+.vs/SpeechImprover.slnx/v18/DocumentLayout.backup.json  # Visual Studio's window-layout file (which editor tabs were open), flagged by its name only; holds no reader or maker data. Deleted long ago; .vs/ is git-ignored.
