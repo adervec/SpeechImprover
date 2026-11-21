@@ -14,8 +14,11 @@ import { createSitting, summarizeSitting, driftNudges, CHUNK_SEC } from '../lib/
 import { putAudio, getAudio, deleteAudio } from '../lib/db.js';
 import { requestSpeechReview } from '../lib/coworkEngine.jsx';
 import { formatDuration } from '../lib/format.js';
+import { ATTRIBUTES } from '../lib/analysis/attributes.js';
 import { t } from '../lib/i18n.js';
 
+// Reading a book aloud: word choice and fillers are the author's, so those chips are parked.
+const BOOK_ATTRS = ATTRIBUTES.map((a) => a.key).filter((k) => k !== 'fillers' && k !== 'nonRepetition');
 const DRAFT_KEY = 'si.sittingDraft';
 const DRAFT_AUDIO = 'sitting-draft';
 
@@ -253,7 +256,7 @@ export default function Sitting({ route, navigate }) {
             <h3>{t('This part, live')}</h3>
             <span className="tiny muted">{t('{time} into this part · live estimates', { time: formatDuration(live?.chunkSec || 0) })}</span>
           </div>
-          <LiveFeedback metrics={live?.metrics || null} profile={profile} wordCount={live?.wordCount || 0} />
+          <LiveFeedback metrics={live?.metrics || null} profile={profile} wordCount={live?.wordCount || 0} focusAttrs={book ? BOOK_ATTRS : []} />
         </div>
       </div>
     );

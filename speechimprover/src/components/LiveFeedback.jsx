@@ -35,6 +35,9 @@ function ready(attr, m, wordCount) {
 
 // focusAttrs: the exercise's targetAttributes — chips outside that set are greyed
 // (still measured, but visually parked) and sorted after the relevant ones.
+// A detail line must never take the screen down mid-recording.
+const detailOf = (attr, metrics) => { try { return attr.detail(metrics); } catch { return '—'; } };
+
 export default function LiveFeedback({ metrics, profile, wordCount = 0, focusAttrs = [] }) {
   const focus = focusAttrs?.length ? new Set(focusAttrs) : null;
   const list = focus
@@ -51,7 +54,7 @@ export default function LiveFeedback({ metrics, profile, wordCount = 0, focusAtt
             <div key={attr.key} className="lf-chip off" title={`${attr.blurb} — not a focus of this exercise`}>
               <span className="lf-dot" style={{ background: 'var(--border)' }} />
               <span className="lf-label muted">{label}</span>
-              <span className="lf-detail muted">{isReady ? attr.detail(metrics) : '—'}</span>
+              <span className="lf-detail muted">{isReady ? detailOf(attr, metrics) : '—'}</span>
             </div>
           );
         }
@@ -70,7 +73,7 @@ export default function LiveFeedback({ metrics, profile, wordCount = 0, focusAtt
           <div key={attr.key} className="lf-chip" title={`${attr.blurb} — score ${score}/100`} style={{ borderColor: color }}>
             <span className="lf-dot" style={{ background: color }} />
             <span className="lf-label">{label}</span>
-            <span className="lf-detail" style={{ color }}>{attr.detail(metrics)}</span>
+            <span className="lf-detail" style={{ color }}>{detailOf(attr, metrics)}</span>
           </div>
         );
       })}

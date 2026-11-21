@@ -134,8 +134,9 @@ export function createSitting({ sampleRate, profile = {}, chunkSec = CHUNK_SEC, 
     live() {
       const snap = la.snapshot();
       const tx = analyzeTranscript(cur.words.join(' '), Math.max(1, cur.speakSec));
-      let metrics = { ...snap, ...tx, recognitionConfidence: 0 };
-      if (book) metrics = forBook(metrics);
+      // Complete metrics even in book mode: the live panel prints every attribute's detail.
+      // (Book mode only changes what is SCORED; the screen parks those two chips.)
+      const metrics = { ...snap, ...tx, recognitionConfidence: 0 };
       return { metrics, wordCount: tx.wordCount, speakSec: spokenBefore + cur.speakSec, chunkSec: cur.speakSec, chunks, breaks, onBreak, recSec };
     },
 
@@ -260,6 +261,14 @@ export function demo() {
   const b = run(true).result;
   ok(b.scores.fillers === null && b.scores.nonRepetition === null && b.scores.pace != null, 'book mode drops word-choice scores, keeps pace');
   ok(b.chunks.every((c) => c.scores.fillers === null), 'book mode applies per chunk');
+  // the live panel prints every attribute's detail text: none may throw, book mode or not
+  for (const bookMode of [true, false]) {
+    const sl = createSitting({ sampleRate: sr, book: bookMode });
+    sl.pushWindow(new Float32Array(sl.win).fill(0.1), 0);
+    sl.addWords('hello there everyone');
+    const m = sl.live().metrics;
+    for (const a of ATTRIBUTES) ok(typeof a.detail(m) === 'string', `live detail for ${a.key}`);
+  }
   // resume from a checkpoint continues the count
   const s2 = createSitting({ sampleRate: sr, chunkSec: 30, resume: { chunks: result.chunks.map((c, i) => ({ ...c, metrics: { wordCount: 10, wpm: 100 }, i })), breaks: 1, transcript: 'earlier', recSec: 200 } });
   ok(Math.abs(s2.live().speakSec - 123) < 4 && s2.live().chunks.length === 4, 'a recovered sitting keeps its chunks and time');
