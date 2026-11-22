@@ -1,8 +1,8 @@
-// Cowork Sync — hand recent practice to an AI agent through a shared folder, with
-// the maker's shared engine (cowork v2, fs mode — see lib/coworkEngine.jsx): named
+// Cowork Sync — hand recent practice to an AI agent through the reader's own cloud folder,
+// with the maker's shared engine (cowork.js, see lib/coworkEngine.jsx): named
 // channels (coach, program), a schedule per channel on the one sync device,
 // review before applying (on by default, per channel), run history with undo.
-// A manual download / paste flow remains for browsers without folder access.
+// A manual download / paste flow remains for when the reader is not signed in.
 
 import { useMemo, useRef, useState } from 'react';
 import { useStore } from '../lib/store.jsx';
@@ -59,14 +59,14 @@ export default function Cowork({ navigate }) {
   return (
     <div className="stack">
       <div className="card">
-        <div className="card-head"><h3>🤝 Cowork Sync</h3><span className="tiny muted">CoworkSyncHub · cowork v2</span></div>
+        <div className="card-head"><h3>🤝 Cowork Sync</h3><span className="tiny muted">CoworkSyncHub</span></div>
         <p className="muted small" style={{ margin: 0 }}>
-          Hand your recent practice to an AI agent through a shared folder. SpeechImprover writes a
+          Hand your recent practice to an AI agent through your own cloud folder. SpeechImprover writes a
           <b> cowork.json</b> manifest plus two channels — <b>coach</b> (feedback) and <b>program</b> (a targeted
-          daily plan) — plus <b>speech-review</b>, an AI grade of each scored take kept beside the app's own score. <a href="https://github.com/adervec/CoworkSyncHub" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>CoworkSyncHub</a> (or
-          any agent pointed at the folder) writes replies back. <b>Every reply waits for your review</b> before it
+          daily plan) — plus <b>speech-review</b>, an AI grade of each scored take kept beside the app's own score. <a href="https://github.com/adervec/CoworkSyncHub" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>CoworkSyncHub</a> (the AI runner)
+          writes replies back there, so it works the same on your phone. <b>Every reply waits for your review</b> before it
           changes anything — untick “review first” on a channel to apply its replies automatically. Applied replies
-          can be undone from the run history. Everything stays on your device.
+          can be undone from the run history. Nothing goes anywhere but your own cloud folder.
         </p>
       </div>
 
@@ -114,7 +114,7 @@ export default function Cowork({ navigate }) {
       )}
 
       <details className="card">
-        <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Manual flow (no folder access)</summary>
+        <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Manual flow (not signed in)</summary>
         <p className="tiny muted">Download a request, hand it to any agent, then paste the reply JSON back.</p>
         <div className="row wrap" style={{ gap: 8, marginBottom: 10 }}>
           <button className="btn ghost sm" disabled={!canRun} onClick={() => downloadRequest('coach')}>⬇ coach request</button>

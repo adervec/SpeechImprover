@@ -1,5 +1,5 @@
-// Mounts the shared cowork engine (https://adervec.github.io/cowork.js, fs mode,
-// cowork v2) ONCE for the whole app, into a hidden holder, so its per-channel
+// Mounts the shared cowork engine (https://adervec.github.io/cowork.js, cowork files in
+// the reader's cloud) ONCE for the whole app, into a hidden holder, so its per-channel
 // schedules and 5-minute reply checks keep running whichever page is open. The
 // Cowork page borrows the panel element while it is shown (useCoworkPanel).
 //
@@ -150,16 +150,16 @@ export function useCoworkPanel(hostRef) {
 }
 
 // After a take is saved: send the speech-review request now (house standard 18,
-// "when a session ends"), if a folder is connected and something awaits review.
+// "when a session ends"), if the reader is signed in and something awaits review.
 // Deferred so the store has re-rendered with the new session first.
 export function requestSpeechReview() {
   setTimeout(() => {
     if (!panel) return;
     const { sessions } = CoworkEngine.live?.current || {};
     if (sessions && !sessionsToReview(sessions).length) return;
-    panel.push('speech-review', true); // a no-op when no folder is connected
+    panel.push('speech-review', true); // a no-op when not signed in
   }, 1500);
 }
 
-// Manual flow (no folder): apply a pasted reply directly — the speaker already chose it.
+// Manual flow (not signed in): apply a pasted reply directly — the speaker already chose it.
 export { setCoach as applyCoachRecord };

@@ -20,26 +20,9 @@ export function ownKeys(storage) {
   return out;
 }
 
-// The cowork engine's remembered folder handle: our key in its shared "cowork-ui" DB.
-export function dropCoworkFolder(idb = globalThis.indexedDB) {
-  return new Promise((resolve) => {
-    if (!idb) return resolve();
-    const open = idb.open('cowork-ui', 1);
-    open.onupgradeneeded = () => open.result.createObjectStore('dirs');
-    open.onerror = () => resolve();
-    open.onsuccess = () => {
-      const db = open.result;
-      const tx = db.transaction('dirs', 'readwrite');
-      tx.objectStore('dirs').delete('speechimprover');
-      tx.oncomplete = tx.onerror = () => { db.close(); resolve(); };
-    };
-  });
-}
-
-export async function eraseAllLocalData({ storage = globalThis.localStorage, deleteDb, cachesApi = globalThis.caches, dropFolder } = {}) {
+export async function eraseAllLocalData({ storage = globalThis.localStorage, deleteDb, cachesApi = globalThis.caches } = {}) {
   for (const k of ownKeys(storage)) storage.removeItem(k);
   if (deleteDb) await deleteDb();
-  if (dropFolder) await dropFolder();
   if (cachesApi) {
     for (const name of await cachesApi.keys()) if (name.startsWith(CACHE_PREFIX)) await cachesApi.delete(name);
   }
