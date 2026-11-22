@@ -303,14 +303,14 @@ export function StoreProvider({ children }) {
     setSessions((prev) =>
       prev.map((x) => {
         if (x.id !== id) return x;
-        next = { ...x, ...patch };
+        next = { ...x, ...patch, updatedAt: Date.now() }; // sync: the newest change wins
         return next;
       })
     );
     if (next) await putSession(next);
     else {
       const existing = await getSession(id);
-      if (existing) await putSession({ ...existing, ...patch });
+      if (existing) await putSession({ ...existing, ...patch, updatedAt: Date.now() });
     }
   }, []);
 
@@ -371,7 +371,7 @@ export function StoreProvider({ children }) {
         continue;
       }
       const { scores, overall, distances } = rescore(s.metrics, nextProfile);
-      const next = { ...s, scores, overall, distances };
+      const next = { ...s, scores, overall, distances, updatedAt: Date.now() };
       await putSession(next);
       updated.push(next);
     }

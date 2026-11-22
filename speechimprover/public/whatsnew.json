@@ -3,7 +3,8 @@
     "date": "2026-11-22",
     "items": [
       "Dates and times now follow your choice under the font picker (ISO 2026-11-22 by default, or your region's style), everywhere in the app.",
-      "Speech recognition listens in your own variety of English (for example British or Australian) when your device is set to it."
+      "Speech recognition listens in your own variety of English (for example British or Australian) when your device is set to it.",
+      "Cloud sync is safer between your phone and computer: it always reads the latest copy before saving, so an older device can no longer undo newer takes, reviews or deletions. It now uses the same sign-in as the other apps."
     ]
   },
   {

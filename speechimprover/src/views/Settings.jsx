@@ -259,8 +259,7 @@ function CloudSync() {
       <div className="card">
         <div className="card-head"><h3>Cloud sync</h3></div>
         <p className="tiny muted">
-          Google Drive sync is disabled on this build. To enable it (e.g. on your own fork), set{' '}
-          <code>VITE_GOOGLE_CLIENT_ID</code> to a Google OAuth client ID at build time. Your local JSON
+          Cloud sync needs the shared house script (font.js), which did not load. Your local JSON
           export/import below works regardless.
         </p>
       </div>
