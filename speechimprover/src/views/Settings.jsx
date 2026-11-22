@@ -7,7 +7,7 @@ import { Modal, useToast } from '../components/ui.jsx';
 import { migrateLegacyTheme } from '../styles/themes.js';
 import { t } from '../lib/i18n.js';
 import { exportData, importData, downloadJson } from '../lib/exportImport.js';
-import { formatBytes, localDayKey } from '../lib/format.js';
+import { formatBytes, localDayKey, formatTime } from '../lib/format.js';
 import { eraseAllLocalData, dropCoworkFolder } from '../lib/eraseAll.js';
 import { deleteDatabase } from '../lib/db.js';
 import {
@@ -298,7 +298,7 @@ function CloudSync() {
           <p className="small" style={{ marginBottom: 12 }}>
             {status === 'error'
               ? <span style={{ color: 'var(--bad)' }}>Couldn’t sync: {error} — try “Sync now”, or reconnect.</span>
-              : <>Last synced {lastSyncedAt ? new Date(lastSyncedAt).toLocaleTimeString() : 'never'}. Changes sync automatically while this tab is open.</>}
+              : <>Last synced {lastSyncedAt ? formatTime(lastSyncedAt) : 'never'}. Changes sync automatically while this tab is open.</>}
           </p>
           <div className="row wrap">
             <button className="btn" onClick={syncNow} disabled={status === 'syncing'}>↻ Sync now</button>

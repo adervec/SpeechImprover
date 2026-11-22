@@ -11,8 +11,8 @@ import {
   weekDelta,
   groupIntoSessions,
 } from '../lib/aggregate.js';
-import { formatDuration, relativeDay } from '../lib/format.js';
-import { t, locale } from '../lib/i18n.js';
+import { formatDuration, relativeDay, formatDate } from '../lib/format.js';
+import { t } from '../lib/i18n.js';
 
 export default function Dashboard({ navigate }) {
   const { sessions, profile, settings, updateSettings } = useStore();
@@ -55,7 +55,7 @@ export default function Dashboard({ navigate }) {
     <div className="stack">
       <div className="row spread wrap">
         <div>
-          <div className="tag">{new Date().toLocaleDateString(locale(), { weekday: 'long', month: 'long', day: 'numeric' })}</div>
+          <div className="tag">{formatDate(new Date(), 'full')}</div>
           <h1>{greeting}</h1>
         </div>
         <div className="row">

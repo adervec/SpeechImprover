@@ -1,5 +1,12 @@
 [
   {
+    "date": "2026-11-22",
+    "items": [
+      "Dates and times now follow your choice under the font picker (ISO 2026-11-22 by default, or your region's style), everywhere in the app.",
+      "Speech recognition listens in your own variety of English (for example British or Australian) when your device is set to it."
+    ]
+  },
+  {
     "date": "2026-11-21",
     "items": [
       "Just speak now shows your score as you go: a large “Score so far” number, a live score for the part you are speaking, and trend lines — one chart for the overall score, and three for its components (voice, melody & flow, words), each switchable between your running score and the score of each part. The same charts are in the review."

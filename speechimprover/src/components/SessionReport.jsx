@@ -12,7 +12,7 @@ import TakeSplitsCard from './TakeSplitsCard.jsx';
 import SittingTimeline from './SittingTimeline.jsx';
 import { useStore } from '../lib/store.jsx';
 import { ATTRIBUTES, REFERENCE_PROFILES, coachingCues } from '../lib/analysis/attributes.js';
-import { formatDuration } from '../lib/format.js';
+import { formatDuration, formatDate } from '../lib/format.js';
 
 function MetricRow({ label, value }) {
   return (
@@ -190,7 +190,7 @@ function AiReviewCard({ review, appScore }) {
         <h3>🤖 AI review</h3>
         <span className="tiny muted">
           grade <b style={{ color: `var(--${tone})`, fontSize: '1.1rem' }}>{review.grade}</b> · app score {appScore}
-          {review.at ? ` · ${new Date(review.at).toLocaleDateString()}` : ''}
+          {review.at ? ` · ${formatDate(review.at)}` : ''}
         </span>
       </div>
       {review.summary && <p className="small" style={{ marginTop: 0 }}>{review.summary}</p>}
@@ -267,8 +267,8 @@ export default function SessionReport({ session, audioUrl, onSelectAttr, focusAt
         <div className="card">
           <div className="card-head">
             <h3>Attribute scores</h3>
-            <span className="tiny muted" title={prev ? `▲/▼ = change since your take on ${new Date(prev.createdAt).toLocaleDateString()}` : undefined}>
-              {prev ? `▲▼ vs last take on this exercise (${new Date(prev.createdAt).toLocaleDateString()})` : 'first take on this exercise'} · click for detail
+            <span className="tiny muted" title={prev ? `▲/▼ = change since your take on ${formatDate(prev.createdAt)}` : undefined}>
+              {prev ? `▲▼ vs last take on this exercise (${formatDate(prev.createdAt)})` : 'first take on this exercise'} · click for detail
             </span>
           </div>
           <AttributeBars scores={scores} compareScores={prev?.scores} onSelect={onSelectAttr} highlight={focusAttrs} />

@@ -1,26 +1,29 @@
 // Small formatting helpers shared across views.
 
-import { t, locale } from './i18n.js';
+import { t } from './i18n.js';
 
-export function formatDate(iso) {
+// Dates and times go through font.js (house standard 28): ISO by default, the reader's
+// regional style if they chose it. The fallback (tests, font.js not loaded) is plain ISO.
+const fmt = () => globalThis.window?.appFont?.fmt;
+const pad = (n) => String(n).padStart(2, '0');
+const isoTime = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+export function formatDate(iso, style) {
   if (!iso) return '—';
-  const d = new Date(iso);
-  return d.toLocaleDateString(locale(), {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+  const f = fmt();
+  return f ? f.date(iso, style) : localDayKey(iso);
+}
+
+export function formatTime(iso) {
+  if (!iso) return '—';
+  const f = fmt();
+  return f ? f.time(iso) : isoTime(new Date(iso));
 }
 
 export function formatDateTime(iso) {
   if (!iso) return '—';
-  const d = new Date(iso);
-  return d.toLocaleString(locale(), {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const f = fmt();
+  return f ? f.dateTime(iso) : `${localDayKey(iso)} ${isoTime(new Date(iso))}`;
 }
 
 // House rule: a calendar day is the user's LOCAL day. Never take a day from

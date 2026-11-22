@@ -14,6 +14,7 @@ import { buildProgressSummary } from './progressSummary.js';
 import { attributeAverages } from './aggregate.js';
 import { EXERCISES, getExercise } from './exercises.js';
 import { scoreParts } from './analysis/index.js';
+import { formatDateTime } from './format.js';
 
 // djb2 (hex) — identical to the hash the rest of the cowork ecosystem declares so
 // agents can echo requestHash back verbatim (CoworkSyncHub idempotency/correlation).
@@ -253,7 +254,7 @@ export function reviewPreview(reply, sessions) {
     const s = byId.get(v.sessionId);
     return {
       id: v.sessionId,
-      label: `${s.exerciseTitle || s.mode} · ${new Date(s.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })} — AI grade ${v.grade} (app score ${s.overall})`,
+      label: `${s.exerciseTitle || s.mode} · ${formatDateTime(s.createdAt)} — AI grade ${v.grade} (app score ${s.overall})`,
       detail: v.summary,
     };
   });

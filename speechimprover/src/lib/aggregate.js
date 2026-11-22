@@ -2,7 +2,6 @@
 
 import { ATTRIBUTES } from './analysis/attributes.js';
 import { localDayKey, parseDayKey } from './format.js';
-import { locale } from './i18n.js';
 
 // The user's LOCAL calendar day of a timestamp.
 const dayKey = (iso) => localDayKey(iso);
@@ -145,8 +144,8 @@ export function demoGroupSessions() {
 }
 
 // ---- GitHub-style contribution grid (practice activity heatmap) ----
-// Short month names in the reader's language (Intl), not a hand-typed English list.
-const monthName = (m) => new Date(2026, m, 1).toLocaleDateString(locale(), { month: 'short' });
+// Short month names in the reader's language (appFont.fmt), not a hand-typed English list.
+const monthName = (m) => (globalThis.window?.appFont?.fmt?.months('short') || [])[m] || String(m + 1);
 
 export function activityLevel(n) {
   if (!n) return 0;

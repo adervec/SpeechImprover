@@ -32,7 +32,7 @@ import { annotateTranscript } from '../lib/analysis/transcriptAnnotate.js';
 import { requestSpeechReview } from '../lib/coworkEngine.jsx';
 import { getTechniqueExercise, evaluateStage } from '../lib/vocalMastery.js';
 import { splitIntoPassages } from '../lib/passages.js';
-import { formatDuration } from '../lib/format.js';
+import { formatDuration, formatDate, formatTime } from '../lib/format.js';
 import { isTTSSupported, speak, cancelTTS, prepareText } from '../lib/tts.js';
 
 const TALK_LENGTHS = [30, 60, 90, 120, 180];
@@ -140,7 +140,7 @@ export default function Practice({ route, navigate }) {
     const interview = partitionSeen(INTERVIEW_PROMPTS, recency, id, () => null);
     return { free: free.fresh, interview: interview.fresh, seen: [...free.seen, ...interview.seen].sort((a, b) => free.seenAt(a) - free.seenAt(b)), seenAt: free.seenAt };
   }, [recency]);
-  const seenLabel = (t) => `✓ read ${new Date(t).toLocaleDateString()}`;
+  const seenLabel = (t) => `✓ read ${formatDate(t)}`;
   const [selectedPassage, setSelectedPassage] = useState(() => (passagePick.fresh[0] || READING_LIBRARY[0]).id);
   const [freePrompt, setFreePrompt] = useState(() => freshPrompt(FREE_PROMPTS, sessions));
   const [freeTone, setFreeTone] = useState(TONE_TARGETS[0]);
@@ -1041,7 +1041,7 @@ function RunContext({ session, sessions }) {
       {isBestHere && <p style={{ margin: 0 }}>🥇 <b>Your best on this exercise</b> (previous best {Math.max(...same.map((s) => s.overall))}).</p>}
       {prev && session.overall != null && (
         <p className="small" style={{ margin: 0 }}>
-          ↔ <b>vs last time on this exercise</b> ({new Date(prev.createdAt).toLocaleDateString()}): overall {delta(session.overall, prev.overall)}
+          ↔ <b>vs last time on this exercise</b> ({formatDate(prev.createdAt)}): overall {delta(session.overall, prev.overall)}
           {m.wpm && pm.wpm ? <> · pace {delta(m.wpm, pm.wpm, ' wpm')}</> : null}
           {m.fillerTotal != null && pm.fillerTotal != null ? <> · fillers {delta(m.fillerTotal, pm.fillerTotal, '', true)}</> : null}
         </p>
@@ -1058,7 +1058,7 @@ function RunContext({ session, sessions }) {
               {sittingTakes.map((s, i) => (
                 <tr key={s.id} style={s.id === session.id ? { fontWeight: 700 } : undefined}>
                   <td>{i + 1}</td>
-                  <td>{new Date(s.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                  <td>{formatTime(s.createdAt)}</td>
                   <td style={{ textAlign: 'left' }}>{s.exerciseTitle}</td>
                   <td>{s.overall ?? '–'}</td>
                   <td>{s.metrics?.wpm ? Math.round(s.metrics.wpm) : '–'}</td>

@@ -21,7 +21,9 @@ export function createRecognizer({ onFinal, onInterim, onError, onEnd } = {}) {
   if (!Impl) return null;
 
   const recog = new Impl();
-  recog.lang = 'en-US';
+  // The analysis (fillers, pace) is English, so listen in English; keep the reader's English variant.
+  const nav = (typeof navigator !== 'undefined' && navigator.language) || '';
+  recog.lang = /^en-/i.test(nav) ? nav : 'en';
   recog.continuous = true;
   recog.interimResults = true;
   recog.maxAlternatives = 1;
